@@ -1,0 +1,158 @@
+{
+  "$schema": "https://www.opengroup.org/archimate/3.2/model.json",
+  "identifier": "model-prop-56464",
+  "name": "Arquitetura de Software: Sistema de Produtos",
+  "documentation": "Proposta arquitetural projetada para atender aos requisitos de produtos. Utiliza Monolito Modular com Frontend SPA priorizando simplicidade de implantação, robustez técnica e conformidade com boas práticas de engenharia de software.",
+  "version": "3.2",
+  "metadata": {
+    "author": "AI Software Architecture Designer",
+    "createdAt": "2026-10-09T22:48:09.131953+00:00",
+    "standard": "The Open Group ArchiMate 3.2 Specification",
+    "description": "Proposta arquitetural projetada para atender aos requisitos de produtos. Utiliza Monolito Modular com Frontend SPA priorizando simplicidade de implantação, robustez técnica e conformidade com boas práticas de engenharia de software.",
+    "architecturalStyle": "Monolito Modular com Frontend SPA"
+  },
+  "elements": [
+    {
+      "identifier": "ACTOR-USER",
+      "name": "Usuário do Sistema",
+      "type": "BusinessActor",
+      "layer": "Business",
+      "documentation": "Usuário final que interage com a solução via navegador web.",
+      "properties": {
+        "role": "Consumidor / Operador",
+        "category": "Business"
+      }
+    },
+    {
+      "identifier": "COMP-FE",
+      "name": "Frontend Web SPA (React)",
+      "type": "ApplicationComponent",
+      "layer": "Application",
+      "documentation": "Interface com o usuário para cadastro, consulta e gestão de produtos.",
+      "properties": {
+        "technology": "React com TypeScript",
+        "category": "Frontend",
+        "justification": "Framework maduro para Single Page Application com tipagem estática e rica experiência do usuário."
+      }
+    },
+    {
+      "identifier": "COMP-BE",
+      "name": "API Backend de Produtos",
+      "type": "ApplicationComponent",
+      "layer": "Application",
+      "documentation": "Endpoints REST, regras de negócio e persistência de dados de produtos.",
+      "properties": {
+        "technology": "Python com FastAPI",
+        "category": "Backend",
+        "justification": "Arquitetura limpa com documentação automática OpenAPI, validações estritas e rápida execução."
+      }
+    },
+    {
+      "identifier": "COMP-DB",
+      "name": "Banco de Dados (PostgreSQL)",
+      "type": "SystemSoftware",
+      "layer": "Technology",
+      "documentation": "Armazenamento relacional e integridade ACID dos registros de produtos.",
+      "properties": {
+        "technology": "PostgreSQL",
+        "category": "Database",
+        "justification": "SGBD relacional de código aberto mais avançado do mercado, com suporte a índices B-Tree e JSONB."
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "identifier": "REL-USER-FE",
+      "name": "Acesso Web",
+      "type": "Serving",
+      "source": "COMP-FE",
+      "target": "ACTOR-USER",
+      "documentation": "Interface web atende as necessidades do usuário final.",
+      "properties": {
+        "protocol": "HTTPS",
+        "communicationPattern": "Synchronous",
+        "purpose": "Interação humana com as interfaces do sistema"
+      }
+    },
+    {
+      "identifier": "INT-FE-BE",
+      "name": "HTTP/REST",
+      "type": "Serving",
+      "source": "COMP-FE",
+      "target": "COMP-BE",
+      "documentation": "Envio e consulta de produtos via endpoints REST JSON.",
+      "properties": {
+        "protocol": "HTTP/REST (HTTPS)",
+        "communicationPattern": "Synchronous",
+        "purpose": "Envio e consulta de produtos via endpoints REST JSON."
+      }
+    },
+    {
+      "identifier": "INT-BE-DB",
+      "name": "TCP",
+      "type": "Access",
+      "source": "COMP-BE",
+      "target": "COMP-DB",
+      "documentation": "Execução de queries SQL de inserção, atualização e consultas com filtros de produtos.",
+      "properties": {
+        "protocol": "TCP / Driver Nativo (Porta 5432)",
+        "communicationPattern": "Synchronous",
+        "purpose": "Execução de queries SQL de inserção, atualização e consultas com filtros de produtos."
+      }
+    }
+  ],
+  "views": [
+    {
+      "identifier": "view-main",
+      "name": "Visão Geral da Arquitetura ArchiMate",
+      "documentation": "Diagrama gerado automaticamente pelo AI Architecture Designer",
+      "nodes": [
+        {
+          "elementRef": "ACTOR-USER",
+          "x": 390.0,
+          "y": 130.0,
+          "width": 220.0,
+          "height": 100.0
+        },
+        {
+          "elementRef": "COMP-FE",
+          "x": 255.0,
+          "y": 440.0,
+          "width": 220.0,
+          "height": 100.0
+        },
+        {
+          "elementRef": "COMP-BE",
+          "x": 525.0,
+          "y": 440.0,
+          "width": 220.0,
+          "height": 100.0
+        },
+        {
+          "elementRef": "COMP-DB",
+          "x": 390.0,
+          "y": 750.0,
+          "width": 220.0,
+          "height": 100.0
+        }
+      ],
+      "connections": [
+        {
+          "relationshipRef": "REL-USER-FE",
+          "sourceRef": "COMP-FE",
+          "targetRef": "ACTOR-USER"
+        },
+        {
+          "relationshipRef": "INT-FE-BE",
+          "sourceRef": "COMP-FE",
+          "targetRef": "COMP-BE"
+        },
+        {
+          "relationshipRef": "INT-BE-DB",
+          "sourceRef": "COMP-BE",
+          "targetRef": "COMP-DB"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="model-prop-56464" xsi:schemaLocation="http://www.opengroup.org/xsd/archimate/3.0/ http://www.opengroup.org/xsd/archimate/3.0/archimate3_Diagram.xsd">
+  <name xml:lang="pt">Arquitetura de Software: Sistema de Produtos</name>
+  <documentation xml:lang="pt">Proposta arquitetural projetada para atender aos requisitos de produtos. Utiliza Monolito Modular com Frontend SPA priorizando simplicidade de implantação, robustez técnica e conformidade com boas práticas de engenharia de software.</documentation>
+  <elements>
+    <element identifier="ACTOR-USER" xsi:type="BusinessActor">
+      <name xml:lang="pt">Usuário do Sistema</name>
+      <documentation xml:lang="pt">Usuário final que interage com a solução via navegador web.</documentation>
+      <properties>
+        <property>
+          <key>role</key>
+          <value>Consumidor / Operador</value>
+        </property>
+        <property>
+          <key>category</key>
+          <value>Business</value>
+        </property>
+      </properties>
+    </element>
+    <element identifier="COMP-FE" xsi:type="ApplicationComponent">
+      <name xml:lang="pt">Frontend Web SPA (React)</name>
+      <documentation xml:lang="pt">Interface com o usuário para cadastro, consulta e gestão de produtos.</documentation>
+      <properties>
+        <property>
+          <key>technology</key>
+          <value>React com TypeScript</value>
+        </property>
+        <property>
+          <key>category</key>
+          <value>Frontend</value>
+        </property>
+        <property>
+          <key>justification</key>
+          <value>Framework maduro para Single Page Application com tipagem estática e rica experiência do usuário.</value>
+        </property>
+      </properties>
+    </element>
+    <element identifier="COMP-BE" xsi:type="ApplicationComponent">
+      <name xml:lang="pt">API Backend de Produtos</name>
+      <documentation xml:lang="pt">Endpoints REST, regras de negócio e persistência de dados de produtos.</documentation>
+      <properties>
+        <property>
+          <key>technology</key>
+          <value>Python com FastAPI</value>
+        </property>
+        <property>
+          <key>category</key>
+          <value>Backend</value>
+        </property>
+        <property>
+          <key>justification</key>
+          <value>Arquitetura limpa com documentação automática OpenAPI, validações estritas e rápida execução.</value>
+        </property>
+      </properties>
+    </element>
+    <element identifier="COMP-DB" xsi:type="SystemSoftware">
+      <name xml:lang="pt">Banco de Dados (PostgreSQL)</name>
+      <documentation xml:lang="pt">Armazenamento relacional e integridade ACID dos registros de produtos.</documentation>
+      <properties>
+        <property>
+          <key>technology</key>
+          <value>PostgreSQL</value>
+        </property>
+        <property>
+          <key>category</key>
+          <value>Database</value>
+        </property>
+        <property>
+          <key>justification</key>
+          <value>SGBD relacional de código aberto mais avançado do mercado, com suporte a índices B-Tree e JSONB.</value>
+        </property>
+      </properties>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="REL-USER-FE" source="COMP-FE" target="ACTOR-USER" xsi:type="Serving">
+      <name xml:lang="pt">Acesso Web</name>
+      <documentation xml:lang="pt">Interface web atende as necessidades do usuário final.</documentation>
+    </relationship>
+    <relationship identifier="INT-FE-BE" source="COMP-FE" target="COMP-BE" xsi:type="Serving">
+      <name xml:lang="pt">HTTP/REST</name>
+      <documentation xml:lang="pt">Envio e consulta de produtos via endpoints REST JSON.</documentation>
+    </relationship>
+    <relationship identifier="INT-BE-DB" source="COMP-BE" target="COMP-DB" xsi:type="Access">
+      <name xml:lang="pt">TCP</name>
+      <documentation xml:lang="pt">Execução de queries SQL de inserção, atualização e consultas com filtros de produtos.</documentation>
+    </relationship>
+  </relationships>
+  <views>
+    <diagrams>
+      <view identifier="view-main" xsi:type="Diagram">
+        <name>Visão Geral da Arquitetura ArchiMate</name>
+        <node elementRef="ACTOR-USER" x="390" y="130" w="220" h="100" />
+        <node elementRef="COMP-FE" x="255" y="440" w="220" h="100" />
+        <node elementRef="COMP-BE" x="525" y="440" w="220" h="100" />
+        <node elementRef="COMP-DB" x="390" y="750" w="220" h="100" />
+      </view>
+    </diagrams>
+  </views>
+</model>

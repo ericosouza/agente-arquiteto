@@ -1,0 +1,302 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1070" width="100%" height="100%" style="background-color: #F8FAFC; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+        <defs>
+            <!-- Background Grid -->
+            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E2E8F0" stroke-width="0.8" opacity="0.6"/>
+            </pattern>
+
+            <!-- Drop Shadow Filter -->
+            <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+                <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0F172A" flood-opacity="0.08" />
+            </filter>
+
+            <!-- ArchiMate Relationship Markers -->
+            <!-- Serving: Open Arrow -->
+            <marker id="marker-serving" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#334155" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </marker>
+
+            <!-- Access: Open Arrow with dashed line convention -->
+            <marker id="marker-access" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#0284C7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </marker>
+
+            <!-- Realization: Hollow Triangular Arrowhead -->
+            <marker id="marker-realization" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+                <path d="M 0 1 L 11 6 L 0 11 Z" fill="#FFFFFF" stroke="#334155" stroke-width="1.6" stroke-linejoin="round" />
+            </marker>
+
+            <!-- Assignment: Filled Circle -->
+            <marker id="marker-assignment" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <circle cx="5" cy="5" r="4" fill="#334155" />
+            </marker>
+
+            <!-- Flow: Solid Filled Arrow -->
+            <marker id="marker-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 1 L 9 5 L 0 9 Z" fill="#334155" />
+            </marker>
+
+            <!-- Association: Standard simple line (no arrowhead) -->
+        </defs>
+        
+<rect width="1000" height="1070" fill="url(#grid)" />
+
+        <g id="diagram-header" transform="translate(50, 35)">
+            <text x="0" y="0" font-size="20" font-weight="700" fill="#0F172A">Arquitetura de Software: Sistema de Produtos</text>
+            <text x="0" y="20" font-size="12" fill="#64748B">Notação Oficial ArchiMate 3.2 • Gerado por AI Software Architecture Designer</text>
+        </g>
+        
+
+            <g id="layer-band-Business_Layer">
+                <!-- Layer Container Box -->
+                <rect x="50" y="90" width="900" height="190"
+                      rx="12" ry="12" fill="#FFF9C4" fill-opacity="0.25"
+                      stroke="#FBC02D" stroke-width="1.5" stroke-dasharray="6,4" />
+                <!-- Layer Banner / Title Tab -->
+                <rect x="66" y="76" width="156" height="26"
+                      rx="6" ry="6" fill="#FBC02D" />
+                <text x="76" y="94" font-size="12" font-weight="700" fill="#FFFFFF">Business Layer</text>
+            </g>
+            
+
+            <g id="layer-band-Application_Layer">
+                <!-- Layer Container Box -->
+                <rect x="50" y="400" width="900" height="190"
+                      rx="12" ry="12" fill="#E1F5FE" fill-opacity="0.25"
+                      stroke="#0288D1" stroke-width="1.5" stroke-dasharray="6,4" />
+                <!-- Layer Banner / Title Tab -->
+                <rect x="66" y="386" width="183" height="26"
+                      rx="6" ry="6" fill="#0288D1" />
+                <text x="76" y="404" font-size="12" font-weight="700" fill="#FFFFFF">Application Layer</text>
+            </g>
+            
+
+            <g id="layer-band-Technology_Layer">
+                <!-- Layer Container Box -->
+                <rect x="50" y="710" width="900" height="190"
+                      rx="12" ry="12" fill="#E8F5E9" fill-opacity="0.25"
+                      stroke="#388E3C" stroke-width="1.5" stroke-dasharray="6,4" />
+                <!-- Layer Banner / Title Tab -->
+                <rect x="66" y="696" width="174" height="26"
+                      rx="6" ry="6" fill="#388E3C" />
+                <text x="76" y="714" font-size="12" font-weight="700" fill="#FFFFFF">Technology Layer</text>
+            </g>
+            
+
+        <g id="relation-REL-USER-FE">
+            <!-- Line Path -->
+            <path d="M 365.0 440 C 365.0 335.0, 500.0 335.0, 500.0 230" fill="none" stroke="#334155" stroke-width="1.6"
+                  stroke-dasharray="none" marker-end="url(#marker-serving)" opacity="0.85" />
+
+            <!-- Edge Label Pill -->
+            <g transform="translate(395.5, 325.0)">
+                <rect x="0" y="0" width="74" height="18" rx="9" ry="9"
+                      fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+                <text x="37.0" y="12" font-size="9" font-weight="600" fill="#475569" text-anchor="middle">
+                    Acesso Web
+                </text>
+            </g>
+        </g>
+        
+
+        <g id="relation-INT-FE-BE">
+            <!-- Line Path -->
+            <path d="M 475.0 490.0 C 475.0 490.0, 525.0 490.0, 525.0 490.0" fill="none" stroke="#334155" stroke-width="1.6"
+                  stroke-dasharray="none" marker-end="url(#marker-serving)" opacity="0.85" />
+
+            <!-- Edge Label Pill -->
+            <g transform="translate(466.0, 480.0)">
+                <rect x="0" y="0" width="68" height="18" rx="9" ry="9"
+                      fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+                <text x="34.0" y="12" font-size="9" font-weight="600" fill="#475569" text-anchor="middle">
+                    HTTP/REST
+                </text>
+            </g>
+        </g>
+        
+
+        <g id="relation-INT-BE-DB">
+            <!-- Line Path -->
+            <path d="M 635.0 540 C 635.0 645.0, 500.0 645.0, 500.0 750" fill="none" stroke="#0284C7" stroke-width="1.6"
+                  stroke-dasharray="5,4" marker-end="url(#marker-access)" opacity="0.85" />
+
+            <!-- Edge Label Pill -->
+            <g transform="translate(551.5, 635.0)">
+                <rect x="0" y="0" width="32" height="18" rx="9" ry="9"
+                      fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+                <text x="16.0" y="12" font-size="9" font-weight="600" fill="#475569" text-anchor="middle">
+                    TCP
+                </text>
+            </g>
+        </g>
+        
+
+        <g id="element-ACTOR-USER" filter="url(#shadow)">
+            <!-- Main Card Container -->
+            <rect x="390.0" y="130" width="220" height="100" rx="8" ry="8"
+                  fill="#FFF9C4" stroke="#FBC02D" stroke-width="1.8" />
+
+            <!-- Card Header Accent -->
+            <rect x="390.0" y="130" width="220" height="28" rx="8" ry="8"
+                  fill="#FFF59D" />
+            <rect x="390.0" y="150" width="220" height="8"
+                  fill="#FFF59D" />
+
+            <!-- ArchiMate Type Glyph -->
+            
+            <g transform="translate(584.0, 138)">
+                <circle cx="8" cy="4" r="3" fill="none" stroke="#F57F17" stroke-width="1.4"/>
+                <path d="M 8 7 L 8 13 M 4 9 L 12 9 M 5 16 L 8 13 L 11 16" fill="none" stroke="#F57F17" stroke-width="1.4" stroke-linecap="round"/>
+            </g>
+            
+
+            <!-- Element Type Subtitle (Small) -->
+            <text x="400.0" y="148" font-size="9" font-weight="700" fill="#FBC02D" letter-spacing="0.5">
+                BUSINESSACTOR
+            </text>
+
+            <!-- Element Name -->
+            <text x="400.0" y="174" font-size="12" font-weight="700" fill="#0F172A">
+                Usuário do Sistema
+            </text>
+
+            <!-- Technology Badge/Text -->
+            
+
+            <!-- Responsibility Snippet -->
+            <text x="400.0" y="218" font-size="9.5" fill="#475569" font-style="italic">
+                Usuário final que interage com a sol...
+            </text>
+        </g>
+        
+
+        <g id="element-COMP-FE" filter="url(#shadow)">
+            <!-- Main Card Container -->
+            <rect x="255.0" y="440" width="220" height="100" rx="8" ry="8"
+                  fill="#E1F5FE" stroke="#0288D1" stroke-width="1.8" />
+
+            <!-- Card Header Accent -->
+            <rect x="255.0" y="440" width="220" height="28" rx="8" ry="8"
+                  fill="#B3E5FC" />
+            <rect x="255.0" y="460" width="220" height="8"
+                  fill="#B3E5FC" />
+
+            <!-- ArchiMate Type Glyph -->
+            
+            <g transform="translate(445.0, 448)">
+                <rect x="5" y="2" width="16" height="14" fill="none" stroke="#0288D1" stroke-width="1.4" rx="1"/>
+                <rect x="2" y="4" width="6" height="3" fill="#FFFFFF" stroke="#0288D1" stroke-width="1.2"/>
+                <rect x="2" y="10" width="6" height="3" fill="#FFFFFF" stroke="#0288D1" stroke-width="1.2"/>
+            </g>
+            
+
+            <!-- Element Type Subtitle (Small) -->
+            <text x="265.0" y="458" font-size="9" font-weight="700" fill="#0288D1" letter-spacing="0.5">
+                APPLICATIONCOMPONENT
+            </text>
+
+            <!-- Element Name -->
+            <text x="265.0" y="484" font-size="12" font-weight="700" fill="#0F172A">
+                Frontend Web SPA (React)
+            </text>
+
+            <!-- Technology Badge/Text -->
+            <rect x="265.0" y="494" width="134" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="#0288D1" stroke-width="0.8"/>
+            <text x="271.0" y="506" font-size="9.5" font-weight="600" fill="#0288D1">
+                ⚙ React com TypeScript
+            </text>
+
+            <!-- Responsibility Snippet -->
+            <text x="265.0" y="528" font-size="9.5" fill="#475569" font-style="italic">
+                Interface com o usuário para cadastr...
+            </text>
+        </g>
+        
+
+        <g id="element-COMP-BE" filter="url(#shadow)">
+            <!-- Main Card Container -->
+            <rect x="525.0" y="440" width="220" height="100" rx="8" ry="8"
+                  fill="#E1F5FE" stroke="#0288D1" stroke-width="1.8" />
+
+            <!-- Card Header Accent -->
+            <rect x="525.0" y="440" width="220" height="28" rx="8" ry="8"
+                  fill="#B3E5FC" />
+            <rect x="525.0" y="460" width="220" height="8"
+                  fill="#B3E5FC" />
+
+            <!-- ArchiMate Type Glyph -->
+            
+            <g transform="translate(715.0, 448)">
+                <rect x="5" y="2" width="16" height="14" fill="none" stroke="#0288D1" stroke-width="1.4" rx="1"/>
+                <rect x="2" y="4" width="6" height="3" fill="#FFFFFF" stroke="#0288D1" stroke-width="1.2"/>
+                <rect x="2" y="10" width="6" height="3" fill="#FFFFFF" stroke="#0288D1" stroke-width="1.2"/>
+            </g>
+            
+
+            <!-- Element Type Subtitle (Small) -->
+            <text x="535.0" y="458" font-size="9" font-weight="700" fill="#0288D1" letter-spacing="0.5">
+                APPLICATIONCOMPONENT
+            </text>
+
+            <!-- Element Name -->
+            <text x="535.0" y="484" font-size="12" font-weight="700" fill="#0F172A">
+                API Backend de Produtos
+            </text>
+
+            <!-- Technology Badge/Text -->
+            <rect x="535.0" y="494" width="122" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="#0288D1" stroke-width="0.8"/>
+            <text x="541.0" y="506" font-size="9.5" font-weight="600" fill="#0288D1">
+                ⚙ Python com FastAPI
+            </text>
+
+            <!-- Responsibility Snippet -->
+            <text x="535.0" y="528" font-size="9.5" fill="#475569" font-style="italic">
+                Endpoints REST, regras de negócio e ...
+            </text>
+        </g>
+        
+
+        <g id="element-COMP-DB" filter="url(#shadow)">
+            <!-- Main Card Container -->
+            <rect x="390.0" y="750" width="220" height="100" rx="8" ry="8"
+                  fill="#E8F5E9" stroke="#388E3C" stroke-width="1.8" />
+
+            <!-- Card Header Accent -->
+            <rect x="390.0" y="750" width="220" height="28" rx="8" ry="8"
+                  fill="#C8E6C9" />
+            <rect x="390.0" y="770" width="220" height="8"
+                  fill="#C8E6C9" />
+
+            <!-- ArchiMate Type Glyph -->
+            
+            <g transform="translate(582.0, 759)">
+                <ellipse cx="9" cy="4" rx="8" ry="2.5" fill="none" stroke="#388E3C" stroke-width="1.3"/>
+                <path d="M 1 4 L 1 12 A 8 2.5 0 0 0 17 12 L 17 4" fill="none" stroke="#388E3C" stroke-width="1.3"/>
+                <ellipse cx="9" cy="8" rx="8" ry="2" fill="none" stroke="#388E3C" stroke-width="0.9" stroke-dasharray="2,2"/>
+            </g>
+            
+
+            <!-- Element Type Subtitle (Small) -->
+            <text x="400.0" y="768" font-size="9" font-weight="700" fill="#388E3C" letter-spacing="0.5">
+                SYSTEMSOFTWARE
+            </text>
+
+            <!-- Element Name -->
+            <text x="400.0" y="794" font-size="12" font-weight="700" fill="#0F172A">
+                Banco de Dados (PostgreSQL)
+            </text>
+
+            <!-- Technology Badge/Text -->
+            <rect x="400.0" y="804" width="74" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="#388E3C" stroke-width="0.8"/>
+            <text x="406.0" y="816" font-size="9.5" font-weight="600" fill="#388E3C">
+                ⚙ PostgreSQL
+            </text>
+
+            <!-- Responsibility Snippet -->
+            <text x="400.0" y="838" font-size="9.5" fill="#475569" font-style="italic">
+                Armazenamento relacional e integrida...
+            </text>
+        </g>
+        
+</svg>
