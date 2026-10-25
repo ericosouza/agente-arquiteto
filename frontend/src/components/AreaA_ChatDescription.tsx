@@ -10,7 +10,7 @@ interface AreaAProps {
 }
 
 const EXAMPLE_PROMPT =
-  'Quero desenvolver um sistema web para cadastro, consulta, alteração e exclusão de produtos. O sistema deve permitir que usuários pesquisem produtos por nome, categoria e preço.'
+  'Iniciativa: Sustentabilidade Corporativa\nSigla: SESG\nFeature: Cálculo e monitoramento de risco ambiental com Spring Boot e Angular\nARQCOR: ARQ-2026'
 
 export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
   messages,
@@ -57,8 +57,9 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
             <Bot size={36} className="text-muted" />
             <h4>Olá! Sou o seu Arquiteto de Software ArchiMate.</h4>
             <p>
-              Descreva em linguagem natural o sistema que deseja construir. Analisarei os
-              componentes, camadas, integrações e gerarei um modelo oficial ArchiMate 3.2.
+              Para criar o desenho de arquitetura, informe os <strong>4 pré-requisitos</strong>:{' '}
+              <strong>Qual iniciativa?</strong>, <strong>Qual Sigla do projeto (4 letras)?</strong>,{' '}
+              <strong>Qual feature?</strong> e <strong>Qual ARQCOR?</strong>
             </p>
             <div className="chat-suggestions">
               <span className="suggestion-label">Exemplos rápidos:</span>
@@ -67,18 +68,18 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
                 onClick={() => onSendMessage(EXAMPLE_PROMPT)}
                 disabled={isLoading}
               >
-                📦 Cadastro de Produtos (CRUD e Busca)
+                🌱 Exemplo Completo (SESG — Risco Ambiental)
               </button>
               <button
                 className="chip-btn"
                 onClick={() =>
                   onSendMessage(
-                    'Sistema de e-commerce com catálogo de produtos, carrinho, processamento de pagamentos com fila assíncrona RabbitMQ e banco PostgreSQL.'
+                    'Iniciativa: Plataforma de Crédito\nSigla: CRDT\nFeature: Análise de concessão de crédito com agente GenAI no GKE, PubSub e bucket GCS\nARQCOR: ARQ-8890'
                   )
                 }
                 disabled={isLoading}
               >
-                🛒 E-commerce com Mensageria
+                🤖 Crédito com GenAI, PubSub e GCS
               </button>
             </div>
           </div>
@@ -132,8 +133,8 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
           onChange={(e) => setInputText(e.target.value)}
           placeholder={
             hasProposal
-              ? 'Deseja alterar algo? Ex: "Mude o banco para MySQL", "Adicione Redis", "Troque React por Angular"...'
-              : 'Descreva seu sistema (ex: "Quero desenvolver um sistema web para cadastro de produtos com busca...")'
+              ? 'Deseja alterar o desenho? Ex: "Adicione um pubsub", "Troque o front para streamlit", "Adicione um sbatch", "Remova o gcs"...'
+              : 'Informe: Qual iniciativa? Qual Sigla do projeto (4 letras)? Qual feature? Qual ARQCOR? e descreva a necessidade...'
           }
           className="chat-textarea"
           rows={3}

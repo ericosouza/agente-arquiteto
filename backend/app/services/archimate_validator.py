@@ -183,11 +183,11 @@ class ArchiMateValidator:
                 message=f"Elemento '{elem.name}' ({t_str}) está associado à camada '{l_str}' em vez de 'Business'.",
                 elementId=elem.id,
             ))
-        elif (t_str.startswith("Application") or t_str == "DataObject") and l_str != "Application":
+        elif (t_str.startswith("Application") or t_str == "DataObject") and l_str not in {"Application", "Channel"}:
             warnings.append(ValidationIssue(
                 severity="warning",
                 code="LAYER_TYPE_MISMATCH",
-                message=f"Elemento '{elem.name}' ({t_str}) está associado à camada '{l_str}' em vez de 'Application'.",
+                message=f"Elemento '{elem.name}' ({t_str}) está associado à camada '{l_str}' em vez de 'Application' ou 'Channel'.",
                 elementId=elem.id,
             ))
         elif (t_str in {"Node", "Device", "SystemSoftware", "TechnologyService", "TechnologyInterface", "Artifact"}) and l_str != "Technology":

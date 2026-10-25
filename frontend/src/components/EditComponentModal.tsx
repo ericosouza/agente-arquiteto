@@ -94,9 +94,10 @@ export const EditComponentModal: React.FC<EditComponentModalProps> = ({
                 }
                 className="form-select"
               >
-                <option value="Business">Business Layer</option>
+                <option value="Channel">Channel Layer</option>
                 <option value="Application">Application Layer</option>
                 <option value="Technology">Technology Layer</option>
+                <option value="Business">Business Layer</option>
               </select>
             </div>
           </div>

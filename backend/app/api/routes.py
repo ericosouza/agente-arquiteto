@@ -62,20 +62,50 @@ async def get_system_info():
 
 @router.post("/architecture/analyze", response_model=ChatResponse)
 async def analyze_architecture(request: AnalyzeRequest):
-    """Step 1 to 4: Receives natural language description and generates initial proposal."""
+    """Step 1 to 4: Validates the 4 mandatory prerequisites, then generates proposal & diagram."""
     try:
+        prereq = ArchitectAgent.extract_prerequisites(
+            request.description,
+            request.history,
+            request.prerequisites,
+        )
+
+        if not prereq.is_complete:
+            missing_msg = ArchitectAgent.build_missing_prerequisites_message(prereq)
+            return ChatResponse(
+                message=missing_msg,
+                proposal=None,
+                prerequisites=prereq,
+                missingPrerequisites=prereq.missing_fields(),
+            )
+
+        # Combine user messages from history + current prompt for full context
+        user_texts = [
+            m.content for m in (request.history or []) if m.role == "user" and m.content
+        ]
+        user_texts.append(request.description)
+        full_description = "\n".join(user_texts)
+
         proposal = await ArchitectAgent.analyze_and_propose(
-            request.description, request.constraints
+            full_description, request.constraints, prereq
+        )
+        model, diagram_svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(
+            proposal
         )
         message = (
-            f"Analisei os requisitos para '{proposal.title}'. "
-            f"Identifiquei {len(proposal.components)} componentes e {len(proposal.integrations)} integrações. "
-            f"Adotei o estilo '{proposal.architecturalStyle}'. "
-            f"Por favor, revise a proposta na tabela abaixo antes da geração do diagrama ArchiMate."
+            f"Pré-requisitos validados (Iniciativa: '{prereq.iniciativa}', Sigla: '{prereq.sigla.upper()}', "
+            f"Feature: '{prereq.feature}', ARQCOR: '{prereq.arqcor}').\n"
+            f"Criei o desenho de arquitetura para '{proposal.title}' com {len(proposal.components)} componentes "
+            f"padronizados e {len(proposal.integrations)} integrações."
         )
         return ChatResponse(
             message=message,
             proposal=proposal,
+            archimateModel=model,
+            diagramSvg=diagram_svg,
+            validation=validation,
+            prerequisites=prereq,
+            missingPrerequisites=[],
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar análise arquitetural: {str(e)}")
@@ -83,18 +113,25 @@ async def analyze_architecture(request: AnalyzeRequest):
 
 @router.post("/architecture/refine", response_model=ChatResponse)
 async def refine_architecture(request: RefineRequest):
-    """Refines proposed architecture based on user instructions."""
+    """Refines proposed architecture and immediately updates the ArchiMate model and SVG diagram."""
     try:
         updated_proposal = await ArchitectAgent.refine_proposal(
             request.proposal, request.feedback
         )
+        model, diagram_svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(
+            updated_proposal
+        )
         message = (
-            f"Atualizei a arquitetura com base no seu pedido ('{request.feedback}'). "
-            f"Versão {updated_proposal.version} pronta para confirmação."
+            f"Atualizei a proposta e o desenho de arquitetura com base no seu pedido ('{request.feedback}'). "
+            f"Versão v{updated_proposal.version} gerada com {len(updated_proposal.components)} componentes."
         )
         return ChatResponse(
             message=message,
             proposal=updated_proposal,
+            archimateModel=model,
+            diagramSvg=diagram_svg,
+            validation=validation,
+            prerequisites=updated_proposal.prerequisites,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar arquitetura: {str(e)}")

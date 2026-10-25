@@ -135,19 +135,19 @@ export const AreaC_DiagramViewer: React.FC<AreaCProps> = ({
               <div className="legend-row">
                 <span className="legend-color-box legend-business"></span>
                 <span>
-                  <strong>Business Layer:</strong> Atores de negócio e processos
+                  <strong>Channel Layer:</strong> Frontend (Angular 20, Streamlit)
                 </span>
               </div>
               <div className="legend-row">
                 <span className="legend-color-box legend-application"></span>
                 <span>
-                  <strong>Application Layer:</strong> Frontend, APIs, Serviços, Objetos de Dados
+                  <strong>Application Layer:</strong> BFF, Atômico, Orquestrador, Batch, GenAI
                 </span>
               </div>
               <div className="legend-row">
                 <span className="legend-color-box legend-technology"></span>
                 <span>
-                  <strong>Technology Layer:</strong> Bancos de Dados, Redis, Fila, Nós de Execução
+                  <strong>Technology Layer:</strong> MySQL, Pub/Sub, Cloud Storage (GCS)
                 </span>
               </div>
               <div className="legend-divider"></div>

@@ -34,9 +34,9 @@ from app.models.archimate import (
 class DiagramGenerator:
     """Generates ArchiMate SVG diagrams and updates view layout coordinates in the model."""
 
-    NODE_WIDTH = 220
-    NODE_HEIGHT = 100
-    HORIZONTAL_GAP = 50
+    NODE_WIDTH = 290
+    NODE_HEIGHT = 104
+    HORIZONTAL_GAP = 45
     VERTICAL_LAYER_GAP = 120
     PADDING = 50
 
@@ -44,14 +44,16 @@ class DiagramGenerator:
     def layout_and_render_svg(cls, model: ArchiMateModel) -> Tuple[str, ArchiMateModel]:
         """Calculates layout for all elements, updates model view nodes, and renders full SVG."""
         # 1. Group elements by layer
+        channel_elems = [e for e in model.elements if e.layer == ArchiMateLayer.CHANNEL]
         business_elems = [e for e in model.elements if e.layer == ArchiMateLayer.BUSINESS]
         app_elems = [e for e in model.elements if e.layer == ArchiMateLayer.APPLICATION]
         tech_elems = [e for e in model.elements if e.layer == ArchiMateLayer.TECHNOLOGY]
         other_elems = [e for e in model.elements if e.layer not in {
-            ArchiMateLayer.BUSINESS, ArchiMateLayer.APPLICATION, ArchiMateLayer.TECHNOLOGY
+            ArchiMateLayer.CHANNEL, ArchiMateLayer.BUSINESS, ArchiMateLayer.APPLICATION, ArchiMateLayer.TECHNOLOGY
         }]
 
         layers_ordered = [
+            ("Channel Layer", ArchiMateLayer.CHANNEL, channel_elems),
             ("Business Layer", ArchiMateLayer.BUSINESS, business_elems),
             ("Application Layer", ArchiMateLayer.APPLICATION, app_elems),
             ("Technology Layer", ArchiMateLayer.TECHNOLOGY, tech_elems),
@@ -259,10 +261,10 @@ class DiagramGenerator:
         tech = elem.properties.get("technology", "")
         resp = elem.documentation or elem.properties.get("responsibility", "")
 
-        # Truncate text for box rendering
-        name_clean = elem.name[:28] + ("..." if len(elem.name) > 28 else "")
-        tech_clean = tech[:30] + ("..." if len(tech) > 30 else "")
-        resp_clean = resp[:36] + ("..." if len(resp) > 36 else "")
+        # Truncate text for box rendering (accommodates standardized names like sboot-sesg-base-atom-risco-ambiental)
+        name_clean = elem.name[:44] + ("..." if len(elem.name) > 44 else "")
+        tech_clean = tech[:38] + ("..." if len(tech) > 38 else "")
+        resp_clean = resp[:46] + ("..." if len(resp) > 46 else "")
 
         glyph_svg = cls._render_element_glyph(elem.type, x + w - 30, y + 8)
 
@@ -287,7 +289,7 @@ class DiagramGenerator:
             </text>
 
             <!-- Element Name -->
-            <text x="{x + 10}" y="{y + 44}" font-size="12" font-weight="700" fill="#0F172A">
+            <text x="{x + 10}" y="{y + 44}" font-size="11" font-weight="700" fill="#0F172A">
                 {name_clean}
             </text>
 

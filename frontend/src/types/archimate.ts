@@ -1,4 +1,5 @@
 export type ArchiMateLayer =
+  | 'Channel'
   | 'Business'
   | 'Application'
   | 'Technology'
@@ -65,6 +66,13 @@ export interface ArchitecturalDecision {
   status: string
 }
 
+export interface PrerequisitesInfo {
+  iniciativa?: string | null
+  sigla?: string | null
+  feature?: string | null
+  arqcor?: string | null
+}
+
 export interface ArchitectureProposal {
   id: string
   title: string
@@ -75,6 +83,7 @@ export interface ArchitectureProposal {
   integrations: IntegrationItem[]
   decisions: ArchitecturalDecision[]
   nonFunctionalRequirements: NonFunctionalRequirement[]
+  prerequisites?: PrerequisitesInfo | null
   status: 'proposed' | 'modified' | 'approved' | 'generated'
   version: number
 }

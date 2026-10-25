@@ -130,6 +130,30 @@ export const AreaB_ArchitectureProposal: React.FC<AreaBProps> = ({
       <div className="proposal-summary-banner">
         <div>
           <h4 className="proposal-title">{proposal.title}</h4>
+          {proposal.prerequisites && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '6px 0 8px' }}>
+              {proposal.prerequisites.iniciativa && (
+                <span className="badge-style">
+                  <strong>Iniciativa:</strong> {proposal.prerequisites.iniciativa}
+                </span>
+              )}
+              {proposal.prerequisites.sigla && (
+                <span className="badge-style">
+                  <strong>Sigla:</strong> {proposal.prerequisites.sigla.toUpperCase()}
+                </span>
+              )}
+              {proposal.prerequisites.feature && (
+                <span className="badge-style">
+                  <strong>Feature:</strong> {proposal.prerequisites.feature}
+                </span>
+              )}
+              {proposal.prerequisites.arqcor && (
+                <span className="badge-style">
+                  <strong>ARQCOR:</strong> {proposal.prerequisites.arqcor}
+                </span>
+              )}
+            </div>
+          )}
           <p className="proposal-style">
             <strong>Estilo Arquitetural:</strong>{' '}
             <span className="badge-style">{proposal.architecturalStyle}</span>

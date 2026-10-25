@@ -3,6 +3,8 @@ import type {
   ArchiMateModel,
   SystemInfo,
   ValidationReport,
+  ChatMessage,
+  PrerequisitesInfo,
 } from '../types/archimate'
 
 const API_BASE = '/api'
@@ -13,6 +15,8 @@ export interface ChatResponsePayload {
   validation?: ValidationReport
   archimateModel?: ArchiMateModel
   diagramSvg?: string
+  prerequisites?: PrerequisitesInfo
+  missingPrerequisites?: string[]
 }
 
 export async function fetchSystemInfo(): Promise<SystemInfo> {
@@ -23,12 +27,19 @@ export async function fetchSystemInfo(): Promise<SystemInfo> {
 
 export async function analyzeArchitecture(
   description: string,
-  constraints: string[] = []
+  constraints: string[] = [],
+  history: ChatMessage[] = [],
+  prerequisites?: PrerequisitesInfo | null
 ): Promise<ChatResponsePayload> {
   const res = await fetch(`${API_BASE}/architecture/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, constraints }),
+    body: JSON.stringify({
+      description,
+      constraints,
+      history,
+      prerequisites: prerequisites || undefined,
+    }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Erro no servidor' }))

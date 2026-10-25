@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class ArchiMateLayer(str, Enum):
+    CHANNEL = "Channel"
     BUSINESS = "Business"
     APPLICATION = "Application"
     TECHNOLOGY = "Technology"
@@ -88,6 +89,12 @@ class ArchiMateRelationshipType(str, Enum):
 
 # Layer Color Palette according to ArchiMate standard conventions
 LAYER_COLORS = {
+    ArchiMateLayer.CHANNEL: {
+        "fill": "#FEF3C7",      # Warm amber/yellow for Channel Layer
+        "stroke": "#D97706",    # Amber border
+        "header": "#FDE68A",
+        "text": "#78350F"
+    },
     ArchiMateLayer.BUSINESS: {
         "fill": "#FFF9C4",      # Warm pastel yellow
         "stroke": "#FBC02D",    # Deep yellow / amber

@@ -15,6 +15,7 @@ import type {
   SystemInfo,
   ValidationReport,
   ChatMessage,
+  PrerequisitesInfo,
 } from './types/archimate'
 import {
   fetchSystemInfo,
@@ -28,6 +29,7 @@ import {
 export const App: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [prerequisites, setPrerequisites] = useState<PrerequisitesInfo | null>(null)
   const [proposal, setProposal] = useState<ArchitectureProposal | null>(null)
   const [archimateModel, setArchimateModel] = useState<ArchiMateModel | null>(null)
   const [diagramSvg, setDiagramSvg] = useState<string | null>(null)
@@ -48,6 +50,19 @@ export const App: React.FC = () => {
       .catch((err) => console.error('Erro ao carregar status do sistema:', err))
   }, [])
 
+  const refreshDiagramFromProposal = async (updatedProposal: ArchitectureProposal) => {
+    try {
+      const res = await approveArchitecture(updatedProposal)
+      if (res.archimateModel && res.diagramSvg) {
+        setArchimateModel(res.archimateModel)
+        setDiagramSvg(res.diagramSvg)
+        setValidation(res.validation || null)
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar diagrama:', err)
+    }
+  }
+
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -55,32 +70,44 @@ export const App: React.FC = () => {
       content: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
+    const previousMessages = [...messages]
     setMessages((prev) => [...prev, userMsg])
     setIsLoading(true)
 
     try {
       if (!proposal) {
-        // Step 1: Initial analysis
-        const res = await analyzeArchitecture(text)
+        // Step 1: Validate prerequisites and generate initial proposal + diagram
+        const res = await analyzeArchitecture(text, [], previousMessages, prerequisites)
+        if (res.prerequisites) {
+          setPrerequisites(res.prerequisites)
+        }
         if (res.proposal) {
           setProposal(res.proposal)
-          const assistantMsg: ChatMessage = {
-            id: `msg-ast-${Date.now()}`,
-            role: 'assistant',
-            content: res.message,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          }
-          setMessages((prev) => [...prev, assistantMsg])
         }
+        if (res.archimateModel && res.diagramSvg) {
+          setArchimateModel(res.archimateModel)
+          setDiagramSvg(res.diagramSvg)
+          setValidation(res.validation || null)
+        }
+        const assistantMsg: ChatMessage = {
+          id: `msg-ast-${Date.now()}`,
+          role: 'assistant',
+          content: res.message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }
+        setMessages((prev) => [...prev, assistantMsg])
       } else {
-        // Step 4: Iterative Refinement
+        // Step 4: Iterative Refinement — updates both proposal AND diagram immediately
         const res = await refineArchitecture(proposal, text)
         if (res.proposal) {
           setProposal(res.proposal)
-          // If diagram was already generated, reset diagram until user approves again
-          setDiagramSvg(null)
-          setArchimateModel(null)
-          setValidation(null)
+          if (res.archimateModel && res.diagramSvg) {
+            setArchimateModel(res.archimateModel)
+            setDiagramSvg(res.diagramSvg)
+            setValidation(res.validation || null)
+          } else {
+            await refreshDiagramFromProposal(res.proposal)
+          }
 
           const assistantMsg: ChatMessage = {
             id: `msg-ast-${Date.now()}`,
@@ -139,12 +166,13 @@ export const App: React.FC = () => {
   }
 
   const handleOpenAddComponent = () => {
+    const sigla = proposal?.prerequisites?.sigla?.toLowerCase() || 'proj'
     const newComp: ComponentItem = {
       id: `COMP-${Date.now().toString().slice(-3)}`,
-      name: 'Novo Componente',
+      name: `sboot-${sigla}-base-atom-novo-dominio`,
       category: 'Backend',
       responsibility: 'Responsabilidade do novo componente',
-      suggestedTechnology: 'Node.js',
+      suggestedTechnology: 'Spring Boot Java',
       justification: 'Necessidade arquitetural adicionada pelo usuário',
       layer: 'Application',
       archimateType: 'ApplicationComponent',
@@ -163,14 +191,14 @@ export const App: React.FC = () => {
       updatedList = proposal.components.map((c) => (c.id === updatedComp.id ? updatedComp : c))
     }
 
-    setProposal({
+    const updatedProposal: ArchitectureProposal = {
       ...proposal,
       components: updatedList,
       version: proposal.version + 1,
       status: 'modified',
-    })
-    setDiagramSvg(null)
-    setArchimateModel(null)
+    }
+    setProposal(updatedProposal)
+    void refreshDiagramFromProposal(updatedProposal)
   }
 
   const handleDeleteComponent = (compId: string) => {
@@ -183,28 +211,28 @@ export const App: React.FC = () => {
       (i) => i.sourceComponentId !== compId && i.targetComponentId !== compId
     )
 
-    setProposal({
+    const updatedProposal: ArchitectureProposal = {
       ...proposal,
       components: updatedComponents,
       integrations: updatedIntegrations,
       version: proposal.version + 1,
       status: 'modified',
-    })
-    setDiagramSvg(null)
-    setArchimateModel(null)
+    }
+    setProposal(updatedProposal)
+    void refreshDiagramFromProposal(updatedProposal)
   }
 
   // Integrations edits
   const handleSaveIntegrations = (updatedIntegrations: IntegrationItem[]) => {
     if (!proposal) return
-    setProposal({
+    const updatedProposal: ArchitectureProposal = {
       ...proposal,
       integrations: updatedIntegrations,
       version: proposal.version + 1,
       status: 'modified',
-    })
-    setDiagramSvg(null)
-    setArchimateModel(null)
+    }
+    setProposal(updatedProposal)
+    void refreshDiagramFromProposal(updatedProposal)
   }
 
   // Exports
@@ -275,6 +303,7 @@ export const App: React.FC = () => {
     if (proposal && !confirm('Deseja iniciar um novo projeto e limpar a arquitetura atual?'))
       return
     setMessages([])
+    setPrerequisites(null)
     setProposal(null)
     setArchimateModel(null)
     setDiagramSvg(null)

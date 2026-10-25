@@ -12,8 +12,8 @@ Implements the multi-step workflow:
 """
 
 from datetime import datetime, timezone
-from typing import Tuple, Optional, List
-from app.models.proposal import ArchitectureProposal
+from typing import Tuple, Optional, List, Any
+from app.models.proposal import ArchitectureProposal, PrerequisitesInfo
 from app.models.archimate import (
     ArchiMateModel,
     ArchiMateModelMetadata,
@@ -24,7 +24,7 @@ from app.models.archimate import (
     ArchiMateRelationshipType,
     ValidationReport,
 )
-from app.services.llm_provider import LLMService
+from app.services.llm_provider import LLMService, PrerequisiteExtractor
 from app.services.archimate_validator import ArchiMateValidator
 from app.services.diagram_generator import DiagramGenerator
 
@@ -33,13 +33,29 @@ class ArchitectAgent:
     """Intelligent Software Architecture Agent."""
 
     @classmethod
+    def extract_prerequisites(
+        cls,
+        description: str,
+        history: Optional[List[Any]] = None,
+        existing: Optional[PrerequisitesInfo] = None,
+    ) -> PrerequisitesInfo:
+        """Extracts and validates the 4 mandatory prerequisites from prompt and history."""
+        return PrerequisiteExtractor.extract(description, history, existing)
+
+    @classmethod
+    def build_missing_prerequisites_message(cls, info: PrerequisitesInfo) -> str:
+        """Builds the response asking the user for any missing prerequisites."""
+        return PrerequisiteExtractor.build_missing_prompt(info)
+
+    @classmethod
     async def analyze_and_propose(
         cls,
         description: str,
-        constraints: Optional[List[str]] = None
+        constraints: Optional[List[str]] = None,
+        prerequisites: Optional[PrerequisitesInfo] = None,
     ) -> ArchitectureProposal:
         """Step 1 to 5: Receives user prompt, analyzes requirements, chooses stack, builds proposal."""
-        raw_proposal = await LLMService.analyze_and_propose(description, constraints)
+        raw_proposal = await LLMService.analyze_and_propose(description, constraints, prerequisites)
         return ArchitectureProposal.model_validate(raw_proposal)
 
     @classmethod
@@ -61,29 +77,22 @@ class ArchitectAgent:
         """Steps 6, 7 & 8: Converts approved proposal into ArchiMate model, validates, renders SVG."""
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # 1. Elements construction
+        # 1. Elements construction (Frontend placed in Channel Layer; no automatic Business Actor)
         elements: List[ArchiMateElement] = []
         element_ids = set()
 
-        # Add Business Layer Actor
-        business_actor_id = "ACTOR-USER"
-        elements.append(ArchiMateElement(
-            id=business_actor_id,
-            name="Usuário do Sistema",
-            type=ArchiMateElementType.BUSINESS_ACTOR,
-            layer=ArchiMateLayer.BUSINESS,
-            documentation="Usuário final que interage com a solução via navegador web.",
-            properties={"role": "Consumidor / Operador", "category": "Business"}
-        ))
-        element_ids.add(business_actor_id)
-
         # Convert proposal components to ArchiMate elements
         for comp in proposal.components:
+            target_layer = (
+                ArchiMateLayer.CHANNEL
+                if comp.category == "Frontend" or comp.layer == ArchiMateLayer.CHANNEL
+                else comp.layer
+            )
             elements.append(ArchiMateElement(
                 id=comp.id,
                 name=comp.name,
                 type=comp.archimateType,
-                layer=comp.layer,
+                layer=target_layer,
                 documentation=comp.responsibility,
                 properties={
                     "technology": comp.suggestedTechnology,
@@ -95,23 +104,6 @@ class ArchitectAgent:
 
         # 2. Relationships construction
         relationships: List[ArchiMateRelationship] = []
-
-        # Connect Business Actor to Frontend Web (Serving relation)
-        frontend_comp = next((c for c in proposal.components if c.category == "Frontend"), None)
-        if frontend_comp:
-            relationships.append(ArchiMateRelationship(
-                id="REL-USER-FE",
-                name="Acesso Web",
-                type=ArchiMateRelationshipType.SERVING,
-                source=frontend_comp.id,
-                target=business_actor_id,
-                documentation="Interface web atende as necessidades do usuário final.",
-                properties={
-                    "protocol": "HTTPS",
-                    "communicationPattern": "Synchronous",
-                    "purpose": "Interação humana com as interfaces do sistema"
-                }
-            ))
 
         # Convert proposal integrations to ArchiMate relationships
         for inte in proposal.integrations:
