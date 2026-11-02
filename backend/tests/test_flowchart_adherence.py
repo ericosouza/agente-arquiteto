@@ -1,4 +1,4 @@
-"""Tests for Flowchart Adherence: Scope Guardrail, Prerequisites, Personas and RAG."""
+"""Testes de conformidade com o fluxograma: Guardrail de Escopo, Pré-requisitos, Personas e RAG."""
 
 from app.services.scope_guardrail import ScopeGuardrail
 from app.services.architecture_rag import ArchitectureRAGService

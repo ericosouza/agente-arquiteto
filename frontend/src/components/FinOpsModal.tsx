@@ -59,7 +59,7 @@ export const FinOpsModal: React.FC<FinOpsModalProps> = ({
         </div>
 
         <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {/* Top KPI Cards */}
+          {/* Cards Principais de KPIs de FinOps */}
           <div
             style={{
               display: 'grid',
@@ -131,7 +131,7 @@ export const FinOpsModal: React.FC<FinOpsModalProps> = ({
             </div>
           </div>
 
-          {/* External Phoenix Docker Integration Banner */}
+          {/* Banner de Integração com o Docker do Arize Phoenix */}
           <div
             style={{
               padding: '12px 16px',
@@ -177,7 +177,7 @@ export const FinOpsModal: React.FC<FinOpsModalProps> = ({
             </a>
           </div>
 
-          {/* Table of Spans */}
+          {/* Tabela de Spans de Execução */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0' }}>

@@ -1,8 +1,8 @@
-"""Brainstorming Agent with Online LLM & Architecture RAG Service.
+"""Agente de Brainstorming com LLM Online e Serviço de RAG de Arquitetura.
 
-Facilitates the interactive refinement step of the architecture workflow,
-incorporating the selected Persona (Architect vs Engineer) and retrieving
-official BV technology and ArchiMate patterns to avoid repetitive templates.
+Facilita a etapa de refinamento interativo do fluxo de arquitetura,
+incorporando a Persona selecionada (Arquiteto vs Engenheiro) e recuperando
+as tecnologias oficiais do BV e padrões ArchiMate para evitar templates repetitivos.
 """
 
 import json
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class BrainstormAgent:
-    """Conversational brainstorming agent for architecture refinement."""
+    """Agente conversacional de brainstorming para refinamento de arquitetura."""
 
     @classmethod
     async def chat(
@@ -27,16 +27,16 @@ class BrainstormAgent:
         prerequisites: Optional[PrerequisitesInfo] = None,
         persona: PersonaType = PersonaType.ARQUITETO,
     ) -> Tuple[str, bool]:
-        """Interacts with user to brainstorm and refine architectural choices.
+        """Interage com o usuário para debater e refinar escolhas arquiteturais.
         
-        Returns:
-            (response_text, is_ready_for_modeling)
+        Retorna:
+            (texto_resposta, esta_pronto_para_modelagem)
         """
-        # 1. Retrieve relevant architectural context from BV RAG
+        # 1. Recupera o contexto arquitetural relevante da base RAG do BV
         rag_chunks = ArchitectureRAGService.search(message, top_k=3)
         context_text = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
 
-        # 2. Check if the user is signaling approval ("Ok?", "pode gerar", "aprovado", "vamos em frente")
+        # 2. Verifica se o usuário está sinalizando aprovação ("Ok?", "pode gerar", "aprovado", "vamos em frente")
         ok_signals = [
             "ok", "está ok", "esta ok", "pode gerar", "pode modelar", "gerar modelo",
             "vamos em frente", "aprovado", "concordo", "perfeito", "prosseguir",
@@ -45,7 +45,7 @@ class BrainstormAgent:
         user_clean = message.strip().lower()
         is_ok = any(sig in user_clean for sig in ok_signals)
 
-        # 3. Call Online LLM with Persona and RAG context
+        # 3. Executa a chamada à LLM Online com a Persona e o contexto do RAG
         provider = settings.detect_active_provider()
         persona_prompt = get_persona_system_prompt(persona)
 
@@ -76,18 +76,18 @@ INSTRUÇÕES DO AGENTE DE BRAINSTORMING:
 
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
-                reply = await cls._call_gemini(message, history, system_instruction)
+                reply = await cls._call_gemini(message, history, system_instruction, persona=persona)
                 return reply, is_ok
             except Exception as e:
-                logger.warning(f"Gemini brainstorm call failed: {e}. Falling back to rule-based assistant.")
+                logger.warning(f"Chamada ao Gemini falhou no brainstorm: {e}. Acionando assistente baseado em regras.")
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
-                reply = await cls._call_openai(message, history, system_instruction)
+                reply = await cls._call_openai(message, history, system_instruction, persona=persona)
                 return reply, is_ok
             except Exception as e:
-                logger.warning(f"OpenAI brainstorm call failed: {e}. Falling back to rule-based assistant.")
+                logger.warning(f"Chamada à OpenAI falhou no brainstorm: {e}. Acionando assistente baseado em regras.")
 
-        # Fallback if offline
+        # Fallback se estiver offline ou sem credencial de nuvem
         from app.services.cost_tracker import CostTracker
         persona_val = persona.value if hasattr(persona, "value") else str(persona)
         CostTracker.record_span(
@@ -110,10 +110,17 @@ INSTRUÇÕES DO AGENTE DE BRAINSTORMING:
 
     @classmethod
     async def _call_gemini(
-        cls, message: str, history: Optional[List[Dict[str, str]]], system_instruction: str
+        cls,
+        message: str,
+        history: Optional[List[Dict[str, str]]],
+        system_instruction: str,
+        persona: Any = None,
     ) -> str:
+        import time
         import httpx
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        from app.services.cost_tracker import CostTracker
+
+        url, headers = settings.get_gemini_request_config()
         contents = []
 
         if history:
@@ -125,23 +132,41 @@ INSTRUÇÕES DO AGENTE DE BRAINSTORMING:
 
         payload = {
             "contents": contents,
-            "systemInstruction": {"parts": [{"text": system_instruction}]},
+            "systemInstruction": {"role": "system", "parts": [{"text": system_instruction}]},
             "generationConfig": {
                 "temperature": 0.4,
                 "maxOutputTokens": 1024,
             }
         }
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="brainstorm_refinement",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", max((len(system_instruction) + len(message)) // 4, 80)),
+                completion_tokens=usage.get("candidatesTokenCount", 250),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
     @classmethod
     async def _call_openai(
-        cls, message: str, history: Optional[List[Dict[str, str]]], system_instruction: str
+        cls,
+        message: str,
+        history: Optional[List[Dict[str, str]]],
+        system_instruction: str,
+        persona: Any = None,
     ) -> str:
+        import time
         import httpx
+        from app.services.cost_tracker import CostTracker
+
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -159,8 +184,19 @@ INSTRUÇÕES DO AGENTE DE BRAINSTORMING:
             "temperature": 0.4,
             "max_tokens": 1024,
         }
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=25.0) as client:
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usage", {})
+            CostTracker.record_span(
+                name="brainstorm_refinement",
+                model=settings.OPENAI_MODEL,
+                prompt_tokens=usage.get("prompt_tokens", max((len(system_instruction) + len(message)) // 4, 80)),
+                completion_tokens=usage.get("completion_tokens", 250),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             return data["choices"][0]["message"]["content"].strip()

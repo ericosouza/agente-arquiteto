@@ -79,7 +79,7 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
           )}
         </div>
 
-        {/* Persona Selector Toolbar */}
+        {/* Barra de Ferramentas de Seleção de Persona */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', paddingTop: '4px' }}>
           <span style={{ fontSize: '11px', color: '#888', fontWeight: 600 }}>PERSONA:</span>
           <button
@@ -124,7 +124,7 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
             <span>Engenheiro de Software</span>
           </button>
 
-          {/* Mode Selector */}
+          {/* Seletor de Modo */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
             <button
               type="button"
@@ -159,7 +159,7 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
           </div>
         </div>
 
-        {/* Flowchart Progress Badges */}
+        {/* Badges de Progresso do Fluxograma */}
         <div style={{ display: 'flex', gap: '6px', fontSize: '10px', color: '#aaa', paddingTop: '4px' }}>
           <span style={{ padding: '2px 6px', background: '#1e293b', borderRadius: '4px' }}>1. Escopo</span>
           <span>→</span>
@@ -258,7 +258,7 @@ export const AreaA_ChatDescription: React.FC<AreaAProps> = ({
         )}
       </div>
 
-      {/* Ready for modeling CTA when in brainstorm mode */}
+      {/* Chamada para Ação: Pronto para Modelagem no modo Brainstorming */}
       {activeMode === 'brainstorm' && (isReadyForModeling || messages.length >= 2) && onTriggerModeling && !hasProposal && (
         <div style={{ padding: '8px 12px', background: '#1e3a8a22', borderTop: '1px solid #1e3a8a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#93c5fd' }}>

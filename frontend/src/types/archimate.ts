@@ -200,7 +200,7 @@ export interface SystemInfo {
 }
 
 
-// FinOps & Observability Types
+// Tipos de FinOps e Observabilidade
 export interface TokenUsage {
   promptTokens: number
   completionTokens: number

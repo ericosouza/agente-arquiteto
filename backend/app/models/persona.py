@@ -1,4 +1,4 @@
-"""Persona models and system prompts for Software Architect and Software Engineer."""
+"""Modelos de persona e prompts de sistema para Arquiteto de Software e Engenheiro de Software."""
 
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -47,5 +47,5 @@ DIRETRIZES DE ATUAÇÃO:
 
 
 def get_persona_system_prompt(persona: PersonaType = PersonaType.ARQUITETO) -> str:
-    """Returns the specialized system prompt for the chosen persona."""
+    """Retorna o prompt de sistema especializado para a persona selecionada."""
     return PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS[PersonaType.ARQUITETO])

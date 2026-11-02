@@ -180,7 +180,7 @@ def infer_contextual_domains(
     - 'storage': for GCS (e.g. 'arquivos-esg' or 'relatorio-esg')
     - 'messaging': for Pub/Sub (e.g. 'eventos-esg' or atom domain)
     """
-    # Remove labeled prerequisite lines (e.g. "Sigla: SESG", "ARQCOR: ARQ-1", "Feature: feat") from raw text
+    # Remove linhas rotuladas de pré-requisitos (ex: "Sigla: SESG", "ARQCOR: ARQ-1", "Feature: feat") do texto bruto
     cleaned_lines = []
     for line in (description or "").splitlines():
         if re.match(r"^\s*(?:qual\s+)?(?:sigla|arqcor|iniciativa)\b\s*[:=\-]", line, re.IGNORECASE):
@@ -188,7 +188,7 @@ def infer_contextual_domains(
         m_feat_line = re.match(r"^\s*(?:qual\s+)?(?:feature|funcionalidade)\b\s*[:=\-]\s*(.+)$", line, re.IGNORECASE)
         if m_feat_line:
             f_val = m_feat_line.group(1).strip()
-            # Keep feature value only if it is not a generic placeholder like 'feat' or 'FEAT-01'
+            # Mantém o valor da feature apenas se não for um placeholder genérico como 'feat' ou 'FEAT-01'
             if not re.match(r"^(?:feat(?:ure)?[\s\-_\d]*|f\d+|us\d+)$", f_val, re.IGNORECASE):
                 cleaned_lines.append(f_val)
             continue
@@ -203,14 +203,14 @@ def infer_contextual_domains(
     narrative = strip_accents(" ".join(cleaned_lines).lower())
     sigla_low = (sigla or "").lower().strip()
 
-    # 1. Detect channel keyword (e.g. "portal", "painel", "dashboard")
+    # 1. Detecta palavra-chave de canal (ex: "portal", "painel", "dashboard")
     channel_word: Optional[str] = None
     for cw in CHANNEL_KEYWORDS:
         if re.search(rf"\b{cw}\b", narrative):
             channel_word = cw
             break
 
-    # 2. Detect explicit "sistema <X>" or "portal <X>" or core subject
+    # 2. Detecta termos explícitos como "sistema <X>" ou "portal <X>" ou assunto principal
     explicit_sistema_subject: Optional[str] = None
     m_sis = re.search(
         r"\bsistema\s+(?:de\s+|do\s+|da\s+|para\s+)?([a-z0-9]+(?:\s+[a-z0-9]+){0,2})",
@@ -224,7 +224,7 @@ def infer_contextual_domains(
         if cand_tokens:
             explicit_sistema_subject = "-".join(cand_tokens[:2])
 
-    # Extract general meaningful business tokens from narrative
+    # Extrai termos de negócio relevantes a partir da narrativa
     all_tokens = re.findall(r"[a-z0-9]+", narrative)
     domain_tokens: List[str] = []
     for t in all_tokens:
@@ -239,7 +239,7 @@ def infer_contextual_domains(
         ):
             domain_tokens.append(t)
 
-    # Determine primary business subject (1 to 3 words)
+    # Determina o assunto principal de negócio (1 a 3 termos)
     if explicit_sistema_subject:
         core_subject = explicit_sistema_subject
     elif domain_tokens:
@@ -250,7 +250,7 @@ def infer_contextual_domains(
     core_words = core_subject.split("-")
     short_subject = "-".join(core_words[:2])
 
-    # Build atom_domain (Core/Atomic service domain — never uses 'portal')
+    # Constrói atom_domain (domínio do serviço Atômico/Core — nunca utiliza 'portal')
     if explicit_sistema_subject:
         atom_domain = f"sistema-{short_subject}" if len(core_words) <= 2 else "-".join(core_words[:3])
     elif len(core_words) == 1:
@@ -258,13 +258,13 @@ def infer_contextual_domains(
     else:
         atom_domain = "-".join(core_words[:3])
 
-    # Build channel_domain (Frontend & BFF domain — uses 'portal-<subject>' if channel_word detected)
+    # Constrói channel_domain (domínio de Frontend e BFF — utiliza 'portal-<assunto>' se detectada palavra de canal)
     if channel_word:
         channel_domain = f"{channel_word}-{short_subject}"
     else:
         channel_domain = atom_domain if not atom_domain.startswith("sistema-") else f"portal-{short_subject}"
 
-    # Contextual secondary domains
+    # Domínios secundários contextuais
     has_relatorio = "relatorio" in narrative or "relatorios" in narrative
     batch_domain = f"relatorio-{core_words[0]}" if has_relatorio else atom_domain
     storage_domain = f"arquivos-{core_words[0]}" if not has_relatorio else f"relatorio-{core_words[0]}"
@@ -440,7 +440,7 @@ class PrerequisiteExtractor:
             if ln.strip()
         ]
 
-        # If user answered in 4 lines corresponding to the 4 questions
+        # Se o usuário respondeu em 4 linhas correspondentes às 4 perguntas
         if len(lines) == 4 and not any(":" in ln for ln in lines):
             if not info.iniciativa:
                 info.iniciativa = lines[0].strip(" .,;")
@@ -454,7 +454,7 @@ class PrerequisiteExtractor:
                 info.arqcor = lines[3].strip(" .,;")
             return
 
-        # If user answered in 4 comma/semicolon-separated parts on a single line (when replying in follow-up)
+        # Se o usuário respondeu em 4 partes separadas por vírgula/ponto-e-vírgula em uma única linha (resposta de follow-up)
         if len(all_user_messages) > 1 and len(lines) == 1 and not (":" in lines[0]):
             parts = [p.strip() for p in re.split(r"[,;]", lines[0]) if p.strip()]
             missing = info.missing_fields()
@@ -474,8 +474,8 @@ class PrerequisiteExtractor:
                 cls._assign_by_question(info, missing[0], lines[0])
                 return
 
-        # If follow-up message has some labeled fields and only 1 or 2 are left unlabeled,
-        # check if feature was already described in the very first message
+        # Se a mensagem de acompanhamento tiver campos rotulados e restarem 1 ou 2 sem rótulo,
+        # verifica se a feature já havia sido descrita na primeira mensagem
         if len(all_user_messages) > 1 and not info.feature and (info.iniciativa and info.sigla and info.arqcor):
             first_msg = all_user_messages[0].strip()
             if len(first_msg) >= 10:
@@ -501,7 +501,7 @@ class PrerequisiteExtractor:
     @staticmethod
     def _clean_value(raw: str, stop_keys: List[str]) -> str:
         val = raw.strip()
-        # Cut off if another key starts on the same line (e.g. "Iniciativa: ESG, Sigla: SESG")
+        # Interrompe se outra chave começar na mesma linha (ex: "Iniciativa: ESG, Sigla: SESG")
         pattern = r",?\s*\b(?:" + "|".join(stop_keys) + r")\b\s*[:=\-]"
         m = re.search(pattern, val, re.IGNORECASE)
         if m:
@@ -557,7 +557,7 @@ class BuiltinExpertEngine:
         if prerequisites:
             combined_text += f" {(prerequisites.iniciativa or '').lower()} {(prerequisites.feature or '').lower()}"
 
-        # Extract or fallback prerequisites
+        # Extrai os pré-requisitos ou aplica valores de fallback
         sigla = (prerequisites.sigla if prerequisites and prerequisites.sigla else None)
         if not sigla:
             # Try to find a 4-letter sigla in description or default to 'base'
@@ -569,13 +569,13 @@ class BuiltinExpertEngine:
         feature_text = (prerequisites.feature if prerequisites and prerequisites.feature else description)
         arqcor = (prerequisites.arqcor if prerequisites and prerequisites.arqcor else "ARQCOR-PADRAO")
 
-        # Determine module (default "base")
+        # Determina o módulo (padrão "base")
         modulo = "base"
         m_mod = re.search(r"\bm[oó]dulo\s*[:=\-]?\s*([a-zA-Z0-9_-]+)", combined_text)
         if m_mod and m_mod.group(1).lower() not in {"de", "do", "da", "para", "com"}:
             modulo = strip_accents(m_mod.group(1).lower())
 
-        # Determine contextual business domains per architectural role
+        # Determina os domínios de negócio contextuais por papel arquitetural
         domains = infer_contextual_domains(description, prerequisites, sigla=sigla)
         channel_dom = domains["channel"]
         atom_dom = domains["atom"]
@@ -585,7 +585,7 @@ class BuiltinExpertEngine:
         msg_dom = domains["messaging"]
         dominio = atom_dom
 
-        # Capability / Technology detection
+        # Detecção de capacidades e tecnologias requeridas
         wants_streamlit = any(w in combined_text for w in ["streamlit", "baixa complexidade", "dashboard simples", "prototipo", "protótipo"])
         wants_no_frontend = any(w in combined_text for w in ["sem front", "sem interface", "apenas backend", "somente api", "somente batch"])
         wants_python_be = any(w in combined_text for w in ["python", "pyweb", "fastapi", "flask", "django"])
@@ -602,7 +602,7 @@ class BuiltinExpertEngine:
         components: List[Dict[str, Any]] = []
         integrations: List[Dict[str, Any]] = []
 
-        # 1. Frontend (in Channel Layer) + BFF (in Application Layer)
+        # 1. Frontend (na camada Channel Layer) + BFF (na camada Application Layer)
         bff_id: Optional[str] = None
         if not wants_no_frontend:
             fe_sigla = "streamlit" if wants_streamlit else "ng"
@@ -622,7 +622,7 @@ class BuiltinExpertEngine:
                 "archimateType": fe_info["archimateType"],
             })
 
-            # BFF is mandatory to serve the Frontend ("bff - backend for frontend, que é o unico componente que serve o front")
+            # BFF é obrigatório para servir o Frontend ("bff - backend for frontend, que é o único componente que serve o front")
             bff_id = "COMP-BFF"
             bff_name = build_component_name(backend_tech_sigla, sigla, modulo, "bff", channel_dom)
             components.append({
@@ -709,7 +709,7 @@ class BuiltinExpertEngine:
                 "purpose": "Consulta e persistência de estado no componente atômico.",
             })
 
-        # 4. Database (Always MySQL as standard, connected exclusively to the atomic component `atom`)
+        # 4. Banco de Dados (Sempre MySQL como padrão, conectado exclusivamente ao componente atômico `atom`)
         db_tech = "MySQL"
         db_id = "COMP-DB"
         components.append({
@@ -976,7 +976,7 @@ class BuiltinExpertEngine:
 
         sigla, modulo, dominio = cls._extract_existing_metadata(proposal_dict)
 
-        # Check if user requested to change sigla, modulo, or dominio
+        # Verifica se o usuário solicitou alteração de sigla, módulo ou domínio
         m_sigla = re.search(r"\bsigla\s+(?:para\s+|por\s+|:?\s*)([a-zA-Z]{4})\b", feedback, re.IGNORECASE)
         if m_sigla and m_sigla.group(1).lower() not in {"para", "como", "nova", "novo"}:
             sigla = m_sigla.group(1).lower()
@@ -991,7 +991,7 @@ class BuiltinExpertEngine:
         if m_dom:
             dominio = slugify_domain(m_dom.group(1), fallback=dominio, max_words=3)
 
-        # Determine current backend tech (sboot or pyweb)
+        # Determina a tecnologia atual de backend (sboot ou pyweb)
         current_be_sigla = "sboot"
         for c in components:
             if c["name"].startswith("pyweb-"):
@@ -1004,7 +1004,7 @@ class BuiltinExpertEngine:
 
         changes_made = False
 
-        # 1. Handle Component Removal
+        # 1. Tratamento de Remoção de Componentes
         if is_remove:
             removed_ids = set()
             for c in list(components):
@@ -1029,8 +1029,8 @@ class BuiltinExpertEngine:
                     if i["sourceComponentId"] not in removed_ids and i["targetComponentId"] not in removed_ids
                 ]
 
-        # 2. Handle Technology / Component Replacement or Addition
-        # 2a. Frontend changes (ng <-> streamlit)
+        # 2. Tratamento de Substituição ou Adição de Tecnologias/Componentes
+        # 2a. Alterações no Frontend (ng <-> streamlit)
         if "streamlit" in fb_norm and not is_remove:
             fe_comp = next((c for c in components if c["category"] == "Frontend"), None)
             info = TECH_CATALOG["streamlit"]
@@ -1113,7 +1113,7 @@ class BuiltinExpertEngine:
                     })
             changes_made = True
 
-        # 2b. Backend stack swap or addition (pyweb <-> sboot)
+        # 2b. Substituição ou adição de stack de backend (pyweb <-> sboot)
         wants_pyweb = any(w in fb_norm for w in ["python", "pyweb", "fastapi", "flask"])
         wants_sboot = any(w in fb_norm for w in ["sboot", "spring boot", "java"]) and "sbatch" not in fb_norm and "spring batch" not in fb_norm
 
@@ -1122,7 +1122,7 @@ class BuiltinExpertEngine:
             current_be_sigla = target_be_sigla
             be_info = TECH_CATALOG[target_be_sigla]
 
-            # If replacing existing backend technology (or if not explicitly adding a new component)
+            # Se estiver substituindo tecnologia existente de backend (ou se não estiver adicionando explicitamente novo componente)
             if is_replace or not is_add:
                 for c in components:
                     if c["category"] in ("Backend", "BFF") and (c["name"].startswith("sboot-") or c["name"].startswith("pyweb-") or c["category"] in ("Backend", "BFF")):
@@ -1135,7 +1135,7 @@ class BuiltinExpertEngine:
                         c["justification"] = f"Atualizado para {be_info['name']} conforme solicitação do usuário."
                         changes_made = True
 
-        # 2c. Specific backend role addition (orch, bff, atom)
+        # 2c. Adição de papel específico de backend (orch, bff, atom)
         if not is_remove:
             if any(w in fb_norm for w in ["orch", "orquestrador", "orquestracao", "integracao externa", "outros sistemas"]):
                 has_orch = any("-orch-" in c["name"] for c in components)
@@ -1493,8 +1493,8 @@ class BuiltinExpertEngine:
                     c["name"] = build_component_name(tech_p, sigla, modulo, tipo_p, dom_p)
             changes_made = True
 
-        # 4. Fallback: If user requested an addition/modification with a domain concept not matched above,
-        # add a new atomic/orchestrator service or component with that domain so the diagram always reflects the change
+        # 4. Fallback: Se o usuário solicitou adição/modificação de um conceito de domínio não mapeado acima,
+        # adiciona um novo serviço ou componente atômico/orquestrador com esse domínio para o diagrama sempre refletir a mudança
         if not changes_made:
             custom_dom = cls._extract_custom_domain(feedback, fallback="")
             if custom_dom and custom_dom != dominio:
@@ -1606,7 +1606,7 @@ class BuiltinExpertEngine:
             "Serving", "Access", "Flow", "Triggering", "Association",
         }
 
-        # Filter out any BusinessActor / Business layer elements
+        # Filtra quaisquer elementos de BusinessActor ou da camada de Negócios (Business Layer)
         filtered_components = []
         removed_ids = set()
         for comp in raw.get("components", []):
@@ -1620,7 +1620,7 @@ class BuiltinExpertEngine:
             cat = comp.get("category", "")
             name_val = comp.get("name", "").strip()
 
-            # Force Frontend into Channel Layer
+            # Garante que o Frontend pertença à camada Channel Layer
             if cat == "Frontend" or name_val.startswith("ng-") or name_val.startswith("streamlit-"):
                 comp["category"] = "Frontend"
                 comp["layer"] = "Channel"
@@ -1631,7 +1631,7 @@ class BuiltinExpertEngine:
             if comp.get("archimateType") not in valid_elem_types:
                 comp["archimateType"] = "SystemSoftware" if comp["layer"] == "Technology" else "ApplicationComponent"
 
-            # Enforce MySQL for Database unless user explicitly asked for another DB in refinement
+            # Garante MySQL para o Banco de Dados, a menos que o usuário solicite explicitamente outro banco no refinamento
             if cat == "Database":
                 comp["suggestedTechnology"] = "MySQL"
                 comp["layer"] = "Technology"
@@ -1640,7 +1640,7 @@ class BuiltinExpertEngine:
 
             parts = name_val.split("-")
             is_valid_catalog_name = len(parts) >= 4 and parts[0] in TECH_CATALOG
-            # Check if LLM used a bad generic domain like 'feat' or 'feature' or 'portal' on an atomic service
+            # Verifica se o LLM utilizou um domínio genérico inadequado como 'feat', 'feature' ou 'portal' em um serviço atômico
             if is_valid_catalog_name:
                 tech_p = parts[0]
                 tipo_p = parts[3] if (tech_p in ("sboot", "pyweb") and len(parts) >= 5) else None
@@ -1810,7 +1810,7 @@ class LLMService:
         rag_chunks = ArchitectureRAGService.search(description, top_k=3)
         rag_context = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        url, headers = settings.get_gemini_request_config()
         prereq_str = (
             f"Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
             if prerequisites else "Extraia do texto"
@@ -1836,14 +1836,14 @@ class LLMService:
         id, title, summary, architecturalStyle, styleJustification, components, integrations, decisions, nonFunctionalRequirements, status ("proposed"), version (1).
         """
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
         import time
         from app.services.cost_tracker import CostTracker
         t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
             latency_ms = (time.perf_counter() - t0) * 1000
@@ -1861,7 +1861,7 @@ class LLMService:
 
     @classmethod
     async def _call_gemini_for_refinement(cls, proposal: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        url, headers = settings.get_gemini_request_config()
         prompt = f"""
         {cls.NAMING_RULES_PROMPT}
 
@@ -1875,14 +1875,14 @@ class LLMService:
         Atualize a versão (+1) e mude o status para 'modified'. Responda APENAS o JSON válido.
         """
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
         import time
         from app.services.cost_tracker import CostTracker
         t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
             latency_ms = (time.perf_counter() - t0) * 1000

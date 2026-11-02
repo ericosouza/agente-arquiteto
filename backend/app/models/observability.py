@@ -1,31 +1,31 @@
-"""Observability and FinOps data models for tracking LLM token consumption and costs."""
+"""Modelos de dados de Observabilidade e FinOps para monitoramento de consumo de tokens e custos de LLM."""
 
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
 class TokenUsage(BaseModel):
-    promptTokens: int = Field(default=0, description="Tokens used in prompt/input")
-    completionTokens: int = Field(default=0, description="Tokens used in response/output")
-    totalTokens: int = Field(default=0, description="Total tokens consumed")
+    promptTokens: int = Field(default=0, description="Tokens utilizados no prompt de entrada")
+    completionTokens: int = Field(default=0, description="Tokens utilizados na resposta/saída")
+    totalTokens: int = Field(default=0, description="Total de tokens consumidos")
 
 
 class CostBreakdown(BaseModel):
-    usd: float = Field(default=0.0, description="Cost in US Dollars")
-    brl: float = Field(default=0.0, description="Cost converted to Brazilian Reais")
+    usd: float = Field(default=0.0, description="Custo em Dólares Americanos (USD)")
+    brl: float = Field(default=0.0, description="Custo convertido para Reais Brasileiros (BRL)")
 
 
 class SpanMetric(BaseModel):
     spanId: str
     traceId: str
-    name: str = Field(..., description="Stage name (e.g. scope_guardrail, brainstorm, archimate_generation)")
+    name: str = Field(..., description="Nome da etapa (ex: scope_guardrail, brainstorm, archimate_generation)")
     model: str
     persona: Optional[str] = None
-    latencyMs: float = Field(default=0.0, description="Duration in milliseconds")
+    latencyMs: float = Field(default=0.0, description="Duração da chamada em milissegundos")
     usage: TokenUsage
     cost: CostBreakdown
     timestamp: str
-    status: str = Field(default="ok", description="'ok' or 'error'")
+    status: str = Field(default="ok", description="'ok' ou 'error'")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 

@@ -1,4 +1,4 @@
-"""Tests for Architect Agent workflow (Etapas 1-8), Prerequisites, Naming Standard, and Refinement."""
+"""Testes para o fluxo de trabalho do Agente Arquiteto (Etapas 1-8), Pré-requisitos, Padrão de Nomenclatura e Refinamento."""
 
 import pytest
 from app.services.architect_agent import ArchitectAgent
@@ -6,7 +6,7 @@ from app.models.proposal import ArchitectureProposal, PrerequisitesInfo
 
 
 def test_extract_prerequisites_incomplete_and_complete():
-    # Incomplete prompt should identify missing fields (Sigla, Feature, ARQCOR)
+    # Prompt incompleto deve identificar os campos ausentes (Sigla, Feature, ARQCOR)
     incomplete_text = "Quero criar um sistema de risco ambiental com Spring Boot"
     prereq = ArchitectAgent.extract_prerequisites(incomplete_text)
     assert prereq.is_complete is False
@@ -15,7 +15,7 @@ def test_extract_prerequisites_incomplete_and_complete():
     assert "Qual feature?" in missing
     assert "Qual ARQCOR?" in missing
 
-    # Complete prompt with the 3 mandatory flowchart prerequisites
+    # Prompt completo com os 3 pré-requisitos obrigatórios do fluxograma
     complete_text = (
         "Sigla: SESG\n"
         "Feature: Risco Ambiental\n"
@@ -42,7 +42,7 @@ def test_agent_component_naming_standard():
     assert isinstance(proposal, ArchitectureProposal)
     comp_names = [c.name for c in proposal.components]
 
-    # Must contain the exact pattern requested: [sigla-tecnologia]-[sigla-sistema]-[modulo]-[tipo]-[dominio]
+    # Deve conter o padrão estrito exigido: [sigla-tecnologia]-[sigla-sistema]-[modulo]-[tipo]-[dominio]
     assert "sboot-sesg-base-atom-risco-ambiental" in comp_names
     assert "sboot-sesg-base-bff-risco-ambiental" in comp_names
     assert "ng-sesg-base-risco-ambiental" in comp_names
@@ -61,21 +61,21 @@ def test_agent_portal_esg_smart_domains_channel_layer_and_mysql():
 
     comp_map = {c.name: c for c in proposal.components}
 
-    # Frontend & BFF must use 'portal-esg', while atomic uses 'sistema-esg'
+    # Frontend e BFF devem utilizar 'portal-esg', enquanto o serviço atômico utiliza 'sistema-esg'
     assert "ng-sesg-base-portal-esg" in comp_map
     assert "sboot-sesg-base-bff-portal-esg" in comp_map
     assert "sboot-sesg-base-atom-sistema-esg" in comp_map
 
-    # Frontend must be in Channel layer
+    # Frontend deve pertencer obrigatoriamente à camada Channel Layer
     fe_comp = comp_map["ng-sesg-base-portal-esg"]
     assert fe_comp.layer.value == "Channel"
 
-    # Database must always be MySQL
+    # Banco de dados deve ser sempre MySQL
     db_comp = next((c for c in proposal.components if c.category == "Database"), None)
     assert db_comp is not None
     assert db_comp.suggestedTechnology == "MySQL"
 
-    # Model & SVG must contain Channel Layer and NOT contain Business Layer / Business Actor
+    # Modelo e SVG devem conter Channel Layer e NÃO devem conter Business Layer / Business Actor
     model, svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(proposal)
     assert validation.isValid is True
     assert "Channel Layer" in svg
@@ -92,7 +92,7 @@ def test_agent_refine_proposal_updates_components_and_diagram():
     prereq = ArchitectAgent.extract_prerequisites(description)
     proposal = ArchitectAgent.propose_sync(description, prerequisites=prereq)
 
-    # Refine to add pubsub, gcs, genaigke and switch frontend to streamlit
+    # Refinamento para adicionar pubsub, gcs, genaigke e trocar frontend para streamlit
     feedback = "Troque o frontend para streamlit e adicione pubsub, bucket gcs e agente genaigke"
     refined = ArchitectAgent.refine_sync(proposal, feedback)
 

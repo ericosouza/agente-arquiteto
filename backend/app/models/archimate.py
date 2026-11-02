@@ -1,7 +1,7 @@
-"""ArchiMate 3.2 Metamodel & Pydantic Schemas.
+"""Metamodelo e Schemas Pydantic para ArchiMate 3.2.
 
-Complies with The Open Group ArchiMate 3.2 Specification.
-Provides structured validation, elements, relationships, layers, and view representations.
+Em conformidade com a especificação ArchiMate 3.2 da The Open Group.
+Fornece validação estruturada, elementos, relacionamentos, camadas e representações de visualização.
 """
 
 from enum import Enum
@@ -20,7 +20,7 @@ class ArchiMateLayer(str, Enum):
 
 
 class ArchiMateElementType(str, Enum):
-    # Business Layer
+    # Camada de Negócios (Business Layer)
     BUSINESS_ACTOR = "BusinessActor"
     BUSINESS_ROLE = "BusinessRole"
     BUSINESS_COLLABORATION = "BusinessCollaboration"
@@ -34,7 +34,7 @@ class ArchiMateElementType(str, Enum):
     CONTRACT = "Contract"
     REPRESENTATION = "Representation"
 
-    # Application Layer
+    # Camada de Aplicação (Application Layer)
     APPLICATION_COMPONENT = "ApplicationComponent"
     APPLICATION_COLLABORATION = "ApplicationCollaboration"
     APPLICATION_INTERFACE = "ApplicationInterface"
@@ -44,7 +44,7 @@ class ArchiMateElementType(str, Enum):
     APPLICATION_SERVICE = "ApplicationService"
     DATA_OBJECT = "DataObject"
 
-    # Technology Layer
+    # Camada de Tecnologia (Technology Layer)
     NODE = "Node"
     DEVICE = "Device"
     SYSTEM_SOFTWARE = "SystemSoftware"
@@ -59,7 +59,7 @@ class ArchiMateElementType(str, Enum):
     TECHNOLOGY_SERVICE = "TechnologyService"
     ARTIFACT = "Artifact"
 
-    # Physical Layer
+    # Camada Física (Physical Layer)
     EQUIPMENT = "Equipment"
     FACILITY = "Facility"
     DISTRIBUTION_NETWORK = "DistributionNetwork"
@@ -67,54 +67,54 @@ class ArchiMateElementType(str, Enum):
 
 
 class ArchiMateRelationshipType(str, Enum):
-    # Structural
+    # Estruturais
     COMPOSITION = "Composition"
     AGGREGATION = "Aggregation"
     ASSIGNMENT = "Assignment"
     REALIZATION = "Realization"
 
-    # Dependency
+    # Dependência
     SERVING = "Serving"
     ACCESS = "Access"
     INFLUENCE = "Influence"
 
-    # Dynamic
+    # Dinâmicos
     TRIGGERING = "Triggering"
     FLOW = "Flow"
 
-    # Other
+    # Outros
     SPECIALIZATION = "Specialization"
     ASSOCIATION = "Association"
 
 
-# Layer Color Palette according to ArchiMate standard conventions
+# Paleta de cores das camadas de acordo com as convenções do padrão ArchiMate
 LAYER_COLORS = {
     ArchiMateLayer.CHANNEL: {
-        "fill": "#FEF3C7",      # Warm amber/yellow for Channel Layer
-        "stroke": "#D97706",    # Amber border
+        "fill": "#FEF3C7",      # Âmbar quente / amarelo para a camada Channel
+        "stroke": "#D97706",    # Borda âmbar
         "header": "#FDE68A",
         "text": "#78350F"
     },
     ArchiMateLayer.BUSINESS: {
-        "fill": "#FFF9C4",      # Warm pastel yellow
-        "stroke": "#FBC02D",    # Deep yellow / amber
+        "fill": "#FFF9C4",      # Amarelo pastel suave
+        "stroke": "#FBC02D",    # Âmbar / amarelo escuro
         "header": "#FFF59D",
         "text": "#374151"
     },
     ArchiMateLayer.APPLICATION: {
-        "fill": "#E1F5FE",      # Light sky blue / cyan
-        "stroke": "#0288D1",    # Deep blue
+        "fill": "#E1F5FE",      # Azul céu claro / ciano
+        "stroke": "#0288D1",    # Azul profundo
         "header": "#B3E5FC",
         "text": "#0F172A"
     },
     ArchiMateLayer.TECHNOLOGY: {
-        "fill": "#E8F5E9",      # Soft pale green
-        "stroke": "#388E3C",    # Forest green
+        "fill": "#E8F5E9",      # Verde pálido suave
+        "stroke": "#388E3C",    # Verde floresta
         "header": "#C8E6C9",
         "text": "#14532D"
     },
     ArchiMateLayer.PHYSICAL: {
-        "fill": "#F1F8E9",      # Olive light green
+        "fill": "#F1F8E9",      # Verde oliva suave
         "stroke": "#689F38",
         "header": "#DCEDC8",
         "text": "#33691E"
@@ -128,22 +128,22 @@ class ArchiMateProperty(BaseModel):
 
 
 class ArchiMateElement(BaseModel):
-    id: str = Field(..., description="Unique identifier (e.g. id-elem-frontend)")
-    name: str = Field(..., description="Human-readable name of the element")
-    type: ArchiMateElementType = Field(..., description="ArchiMate element type")
-    layer: ArchiMateLayer = Field(..., description="ArchiMate architectural layer")
-    documentation: Optional[str] = Field(default="", description="Detailed description/responsibility")
-    properties: Dict[str, str] = Field(default_factory=dict, description="Key-value properties (technology, responsibility, etc.)")
+    id: str = Field(..., description="Identificador único (ex: id-elem-frontend)")
+    name: str = Field(..., description="Nome legível por humanos do elemento")
+    type: ArchiMateElementType = Field(..., description="Tipo do elemento ArchiMate")
+    layer: ArchiMateLayer = Field(..., description="Camada arquitetural do ArchiMate")
+    documentation: Optional[str] = Field(default="", description="Descrição detalhada e responsabilidade")
+    properties: Dict[str, str] = Field(default_factory=dict, description="Propriedades chave-valor (tecnologia, papel, etc.)")
 
 
 class ArchiMateRelationship(BaseModel):
-    id: str = Field(..., description="Unique identifier (e.g. id-rel-1)")
-    name: Optional[str] = Field(default=None, description="Optional label for the relationship")
-    type: ArchiMateRelationshipType = Field(..., description="ArchiMate relationship type")
-    source: str = Field(..., description="ID of the source element")
-    target: str = Field(..., description="ID of the target element")
-    documentation: Optional[str] = Field(default="", description="Description of the integration/purpose")
-    properties: Dict[str, str] = Field(default_factory=dict, description="Metadata: protocol, communicationPattern, purpose")
+    id: str = Field(..., description="Identificador único (ex: id-rel-1)")
+    name: Optional[str] = Field(default=None, description="Rótulo opcional para o relacionamento")
+    type: ArchiMateRelationshipType = Field(..., description="Tipo do relacionamento ArchiMate")
+    source: str = Field(..., description="ID do elemento de origem")
+    target: str = Field(..., description="ID do elemento de destino")
+    documentation: Optional[str] = Field(default="", description="Descrição da integração e propósito")
+    properties: Dict[str, str] = Field(default_factory=dict, description="Metadados: protocolo, padrão de comunicação, finalidade")
 
 
 class ArchiMateViewNode(BaseModel):
@@ -178,10 +178,10 @@ class ArchiMateModelMetadata(BaseModel):
 
 
 class ArchiMateModel(BaseModel):
-    identifier: str = Field(..., description="Model unique ID")
-    name: str = Field(..., description="System / Solution Name")
-    documentation: str = Field(..., description="General overview of the solution architecture")
-    version: str = Field(default="3.2", description="ArchiMate specification version")
+    identifier: str = Field(..., description="Identificador único do modelo")
+    name: str = Field(..., description="Nome do Sistema / Solução")
+    documentation: str = Field(..., description="Visão geral da arquitetura da solução")
+    version: str = Field(default="3.2", description="Versão da especificação ArchiMate")
     metadata: ArchiMateModelMetadata
     elements: List[ArchiMateElement] = Field(default_factory=list)
     relationships: List[ArchiMateRelationship] = Field(default_factory=list)
@@ -189,7 +189,7 @@ class ArchiMateModel(BaseModel):
 
 
 class ValidationIssue(BaseModel):
-    severity: str = Field(..., description="'error', 'warning', or 'info'")
+    severity: str = Field(..., description="'error', 'warning' ou 'info'")
     code: str
     message: str
     elementId: Optional[str] = None

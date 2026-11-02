@@ -1,4 +1,4 @@
-"""Tests for FinOps and Observability Cost Tracker."""
+"""Testes para o Rastreador de Custos de FinOps e Observabilidade."""
 
 import types
 from app.services.cost_tracker import CostTracker
@@ -32,13 +32,13 @@ def run_sync(coro):
 
 
 def test_cost_tracker_calculation():
-    # 1,000,000 prompt tokens of gemini-2.0-flash is $0.10
-    # 1,000,000 completion tokens is $0.40
+    # 1.000.000 tokens de prompt do gemini-2.0-flash custam $0.10
+    # 1.000.000 tokens de completion custam $0.40
     cost = CostTracker.calculate_cost("gemini-2.0-flash", 1_000_000, 1_000_000)
     assert round(cost.usd, 2) == 0.50
     assert cost.brl > 2.0  # 0.50 * 5.80 = ~2.90
 
-    # Builtin cost should be $0.00
+    # Custo de motor embutido/local deve ser $0.00
     free_cost = CostTracker.calculate_cost("builtin", 50_000, 50_000)
     assert free_cost.usd == 0.0
     assert free_cost.brl == 0.0
@@ -68,12 +68,12 @@ def test_cost_tracker_record_and_summary():
 def test_finops_api_endpoints():
     CostTracker.reset()
 
-    # Call summary endpoint
+    # Consulta endpoint de resumo
     summary = run_sync(get_finops_summary())
     assert isinstance(summary, FinOpsSummary)
     assert summary.totalCalls == 0
 
-    # Record a span
+    # Registra um span de execução
     CostTracker.record_span(
         name="test_api_span",
         model="gemini-2.0-flash",
@@ -86,12 +86,12 @@ def test_finops_api_endpoints():
     assert summary2.totalCalls == 1
     assert summary2.totalTokens == 1200
 
-    # Call traces endpoint
+    # Consulta endpoint de traces
     traces = run_sync(get_finops_traces())
     assert len(traces) == 1
     assert traces[0].name == "test_api_span"
 
-    # Reset
+    # Reset de métricas
     res_reset = run_sync(reset_finops())
     assert res_reset["status"] == "ok"
     summary3 = run_sync(get_finops_summary())

@@ -1,8 +1,8 @@
-"""Scope Guardrail Service for AI Software Architecture Designer.
+"""Serviço de Guardrail de Escopo para o Agente Arquiteto de Software AI.
 
-Validates whether the user's request falls strictly within the domain of
-software architecture, system design, component integration, and Archi / ArchiMate modeling.
-If out of scope, politely refuses the request as mandated by the system flowchart.
+Valida se a solicitação do usuário se enquadra estritamente no domínio de
+arquitetura de software, design de sistemas, integração de componentes e modelagem Archi / ArchiMate.
+Caso esteja fora de escopo, recusa educadamente o pedido conforme exigido no fluxograma oficial.
 """
 
 import logging
@@ -12,7 +12,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Keywords that indicate the request is within software architecture scope
+# Palavras-chave que indicam que a requisição está dentro do escopo de arquitetura de software
 IN_SCOPE_KEYWORDS = [
     "sistema", "arquitetura", "desenho", "modelagem", "archi", "archimate",
     "componente", "backend", "frontend", "api", "microsserviço", "microservico",
@@ -25,7 +25,7 @@ IN_SCOPE_KEYWORDS = [
     "resiliencia", "tabela", "cache", "redis", "postgres", "sql", "nosql"
 ]
 
-# Explicit out-of-scope triggers (e.g. food recipes, general jokes, IT support tickets, personal advice)
+# Gatilhos explícitos de fora de escopo (receitas culinárias, piadas, suporte de TI pessoal, horóscopo, etc.)
 OUT_OF_SCOPE_PATTERNS = [
     r"\breceita\s+de\s+(?:bolo|pao|comida|torta|pizza|cafe)\b",
     r"\bcomo\s+fazer\s+(?:um\s+bolo|almoco|jantar)\b",
@@ -46,19 +46,19 @@ DEFAULT_REFUSAL_MESSAGE = (
 
 
 class ScopeGuardrail:
-    """Evaluates whether the incoming user request is within scope."""
+    """Avalia se a solicitação do usuário está dentro do escopo permitido."""
 
     @classmethod
     def check_scope_sync(cls, message: str) -> Tuple[bool, Optional[str]]:
-        """Synchronous heuristic scope check."""
+        """Verificação heurística síncrona de escopo."""
         clean_text = message.strip().lower()
 
-        # 1. Fast heuristics: check explicit out-of-scope patterns
+        # 1. Heurísticas rápidas: verifica padrões explícitos fora de escopo
         for pattern in OUT_OF_SCOPE_PATTERNS:
             if re.search(pattern, clean_text):
                 return False, DEFAULT_REFUSAL_MESSAGE
 
-        # 2. If short greetings / setup messages (e.g., "olá", "iniciar", "quero criar um sistema")
+        # 2. Saudações curtas ou mensagens iniciais (ex: "olá", "iniciar", "quero criar um sistema")
         if any(kw in clean_text for kw in IN_SCOPE_KEYWORDS):
             return True, None
 
@@ -74,8 +74,8 @@ class ScopeGuardrail:
 
     @classmethod
     async def evaluate_scope(cls, message: str) -> Tuple[bool, Optional[str]]:
-        """Evaluates scope using fast heuristics first, falling back to online LLM when needed."""
-        # 1. First run fast heuristics
+        """Avalia o escopo usando heurísticas rápidas e recorre à LLM online quando necessário."""
+        # 1. Executa primeiro as heurísticas rápidas
         is_in, refusal = cls.check_scope_sync(message)
         if not is_in:
             from app.services.cost_tracker import CostTracker
@@ -88,18 +88,18 @@ class ScopeGuardrail:
             )
             return False, refusal
 
-        # 2. Check with Online LLM if configured and keys are present
+        # 2. Consulta a LLM Online se estiver configurada com credenciais
         provider = settings.detect_active_provider()
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
                 return await cls._evaluate_with_gemini(message)
             except Exception as e:
-                logger.warning(f"Gemini scope evaluation failed: {e}. Using heuristic evaluation.")
+                logger.warning(f"Avaliação de escopo com Gemini falhou: {e}. Mantendo decisão heurística.")
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
                 return await cls._evaluate_with_openai(message)
             except Exception as e:
-                logger.warning(f"OpenAI scope evaluation failed: {e}. Using heuristic evaluation.")
+                logger.warning(f"Avaliação de escopo com OpenAI falhou: {e}. Mantendo decisão heurística.")
 
         from app.services.cost_tracker import CostTracker
         CostTracker.record_span(
@@ -113,8 +113,11 @@ class ScopeGuardrail:
 
     @classmethod
     async def _evaluate_with_gemini(cls, message: str) -> Tuple[bool, Optional[str]]:
+        import time
         import httpx
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        from app.services.cost_tracker import CostTracker
+
+        url, headers = settings.get_gemini_request_config()
         prompt = (
             "Você é um classificador rigoroso de escopo para um Agente Arquiteto de Software corporativo.\n"
             "O escopo permitido é EXCLUSIVAMENTE: arquitetura de software, desenho de sistemas, "
@@ -123,13 +126,23 @@ class ScopeGuardrail:
             f"Mensagem do usuário: \"{message}\""
         )
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=8.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="scope_guardrail",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", max(len(prompt) // 4, 40)),
+                completion_tokens=usage.get("candidatesTokenCount", 25),
+                latency_ms=latency_ms,
+            )
             raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
             import json
             parsed = json.loads(raw_text)
@@ -138,7 +151,10 @@ class ScopeGuardrail:
 
     @classmethod
     async def _evaluate_with_openai(cls, message: str) -> Tuple[bool, Optional[str]]:
+        import time
         import httpx
+        from app.services.cost_tracker import CostTracker
+
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -157,10 +173,20 @@ class ScopeGuardrail:
             ],
             "response_format": {"type": "json_object"}
         }
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usage", {})
+            CostTracker.record_span(
+                name="scope_guardrail",
+                model=settings.OPENAI_MODEL,
+                prompt_tokens=usage.get("prompt_tokens", max((len(prompt) + len(message)) // 4, 40)),
+                completion_tokens=usage.get("completion_tokens", 20),
+                latency_ms=latency_ms,
+            )
             import json
             parsed = json.loads(data["choices"][0]["message"]["content"])
             in_scope = bool(parsed.get("in_scope", True))

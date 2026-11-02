@@ -42,12 +42,12 @@ export const App: React.FC = () => {
   const [validation, setValidation] = useState<ValidationReport | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  // Persona & Brainstorm State
+  // Estado da Persona e Brainstorm
   const [persona, setPersona] = useState<PersonaType>('arquiteto')
   const [activeMode, setActiveMode] = useState<'brainstorm' | 'direct'>('brainstorm')
   const [isReadyForModeling, setIsReadyForModeling] = useState<boolean>(false)
 
-  // FinOps & Observability state
+  // Estado de FinOps e Observabilidade
   const [finOpsSummary, setFinOpsSummary] = useState<FinOpsSummary | null>(null)
   const [showFinOpsModal, setShowFinOpsModal] = useState<boolean>(false)
 
@@ -60,14 +60,14 @@ export const App: React.FC = () => {
     refreshFinOps()
   }
 
-  // Modals state
+  // Estado dos Modais
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false)
   const [showComponentModal, setShowComponentModal] = useState<boolean>(false)
   const [showIntegrationModal, setShowIntegrationModal] = useState<boolean>(false)
   const [editingComponent, setEditingComponent] = useState<ComponentItem | null>(null)
   const [isNewComponent, setIsNewComponent] = useState<boolean>(false)
 
-  // Load system info on mount
+  // Carrega status do sistema ao montar o componente
   useEffect(() => {
     fetchSystemInfo()
       .then(setSystemInfo)
@@ -167,7 +167,7 @@ export const App: React.FC = () => {
 
     try {
       if (!proposal) {
-        // Mode 1: Brainstorming & RAG interaction
+        // Modo 1: Interação de Brainstorming e RAG
         if (activeMode === 'brainstorm') {
           const lowerText = text.trim().toLowerCase()
           const isTriggerCall =
@@ -202,7 +202,7 @@ export const App: React.FC = () => {
           }
           setMessages((prev) => [...prev, assistantMsg])
         } else {
-          // Mode 2: Direct analysis and modeling
+          // Modo 2: Análise direta e modelagem
           const res = await analyzeArchitecture(text, [], previousMessages, prerequisites, persona)
           if (res.prerequisites) {
             setPrerequisites(res.prerequisites)
@@ -236,7 +236,7 @@ export const App: React.FC = () => {
           setMessages((prev) => [...prev, assistantMsg])
         }
       } else {
-        // Proposal already exists: Refinement loop
+        // Proposta já existente: Loop de refinamento
         const res = await refineArchitecture(proposal, text, persona)
         if (res.proposal) {
           setProposal(res.proposal)
@@ -312,7 +312,7 @@ export const App: React.FC = () => {
     }
   }
 
-  // Component manipulation handlers
+  // Manipuladores de componentes
   const handleOpenAddComponent = () => {
     setEditingComponent(null)
     setIsNewComponent(true)
@@ -374,7 +374,7 @@ export const App: React.FC = () => {
     refreshDiagramFromProposal(updatedProposal)
   }
 
-  // Export handlers
+  // Manipuladores de exportação
   const handleDownloadSvg = () => {
     if (!diagramSvg) return
     const blob = new Blob([diagramSvg], { type: 'image/svg+xml;charset=utf-8' })
@@ -460,7 +460,7 @@ export const App: React.FC = () => {
       />
 
       <main className="main-container">
-        {/* Top Grid: Area A (Chat) + Area B (Proposal Table) */}
+        {/* Grid Superior: Área A (Chat) + Área B (Tabela de Proposta) */}
         <div className="top-grid">
           <div className="grid-col-left">
             <AreaA_ChatDescription
@@ -488,7 +488,7 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Middle: Area C (Diagram Viewer) */}
+        {/* Centro: Área C (Visualizador de Diagrama) */}
         <div className="diagram-section">
           <AreaC_DiagramViewer
             svgMarkup={diagramSvg}
@@ -496,7 +496,7 @@ export const App: React.FC = () => {
           />
         </div>
 
-        {/* Bottom: Area D (Export & Action Toolbar) */}
+        {/* Rodapé: Área D (Barra de Ações e Exportação) */}
         <div className="export-section">
           <AreaD_ExportToolbar
             proposal={proposal}
@@ -515,7 +515,7 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Modals */}
+      {/* Janelas Modais */}
       {showComponentModal && (
         <EditComponentModal
           component={editingComponent}

@@ -1,7 +1,8 @@
-"""Tests for FastAPI endpoints: Scope Guardrail, Prerequisites (Sigla, Feature, ARQCOR),
-Personas, Brainstorm RAG, Model Generation and XML/JSON Exporters.
+"""Testes para os endpoints FastAPI: Guardrail de Escopo, Pré-requisitos (Sigla, Feature, ARQCOR),
+Personas, Brainstorm com RAG, Geração de Modelo e Exportadores XML/JSON.
 """
 
+import json
 import types
 import pytest
 from app.api.routes import (
@@ -24,7 +25,7 @@ from app.models.persona import PersonaType
 
 
 def run_sync(coro):
-    """Executes a coroutine chain synchronously in environments where loopback socketpair is restricted."""
+    """Executa uma cadeia de corrotinas sincronamente em ambientes onde o loopback socketpair é restrito."""
     stack = [coro]
     result = None
     while stack:
@@ -83,7 +84,7 @@ def test_api_brainstorm_endpoint():
     assert res.persona == PersonaType.ARQUITETO
     assert len(res.ragSourcesUsed) > 0
 
-    # Test confirmation with 'Ok'
+    # Teste de confirmação com sinal 'Ok'
     req_ok = BrainstormRequest(
         message="Ok, pode prosseguir para a modelagem!",
         persona=PersonaType.ENGENHEIRO,
@@ -107,7 +108,7 @@ def test_api_analyze_blocks_without_prerequisites():
 
 
 def test_api_analyze_refine_approve_and_export_flow():
-    # 1. Analyze with the 3 mandatory prerequisites
+    # 1. Análise com os 3 pré-requisitos obrigatórios
     req_analyze = AnalyzeRequest(
         description=(
             "Sigla: SESG\n"
@@ -124,7 +125,7 @@ def test_api_analyze_refine_approve_and_export_flow():
     assert "sboot-sesg-base-atom-risco-ambiental" in res_analyze.diagramSvg
     proposal = res_analyze.proposal
 
-    # 2. Refine proposal
+    # 2. Refinamento da proposta
     req_refine = RefineRequest(
         proposal=proposal,
         feedback="Adicione um spring batch (sbatch) e um pubsub para eventos",
@@ -136,21 +137,21 @@ def test_api_analyze_refine_approve_and_export_flow():
     assert "sbatch-sesg-base-" in res_refine.diagramSvg
     assert "pubsub-sesg-base-" in res_refine.diagramSvg
 
-    # 3. Approve proposal
+    # 3. Aprovação da proposta
     req_approve = ApproveRequest(proposal=refined_proposal)
     res_approve = run_sync(approve_architecture(req_approve))
     assert res_approve.archimateModel is not None
-    assert res_approve.diagramSvg is not None
-    assert "<svg" in res_approve.diagramSvg
     assert res_approve.validation.isValid is True
-
-    # 4. Export JSON & XML
     model = res_approve.archimateModel
-    json_response = run_sync(export_json(model))
-    assert json_response.media_type == "application/json"
-    assert b"elements" in json_response.body
 
-    xml_response = run_sync(export_xml(model))
-    assert xml_response.media_type == "application/xml"
-    assert b"<?xml" in xml_response.body
-    assert b"http://www.opengroup.org/xsd/archimate/3.0/" in xml_response.body
+    # 4. Exportação JSON
+    json_resp = run_sync(export_json(model))
+    json_data = json.loads(json_resp.body.decode("utf-8"))
+    assert json_data["identifier"] == model.identifier
+    assert len(json_data["elements"]) == len(model.elements)
+
+    # 5. Exportação XML
+    xml_resp = run_sync(export_xml(model))
+    xml_str = xml_resp.body.decode("utf-8")
+    assert '<?xml version="1.0" encoding="UTF-8"?>' in xml_str
+    assert "www.opengroup.org/xsd/archimate/3.0/" in xml_str

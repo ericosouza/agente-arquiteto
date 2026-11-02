@@ -76,7 +76,7 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
         </div>
 
         <div className="area-d-buttons">
-          {/* Primary Action: Approve & Generate */}
+          {/* Ação Primária: Aprovar e Gerar */}
           {proposal && !hasDiagram && (
             <button
               onClick={onApproveAndGenerate}
@@ -88,7 +88,7 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
             </button>
           )}
 
-          {/* Regenerate if proposal was modified after generation */}
+          {/* Regerar modelo se a proposta foi alterada após a geração */}
           {proposal && hasDiagram && proposal.status === 'modified' && (
             <button
               onClick={onApproveAndGenerate}
@@ -114,7 +114,7 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
             </button>
           )}
 
-          {/* Export Buttons */}
+          {/* Botões de Exportação */}
           <div className="export-btn-group">
             <button
               onClick={onDownloadSvg}
@@ -157,7 +157,7 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
             </button>
           </div>
 
-          {/* Reset button */}
+          {/* Botão de Reinício */}
           <button
             onClick={onReset}
             disabled={isProcessing}

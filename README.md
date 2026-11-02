@@ -105,15 +105,16 @@ Para utilizar o Agente Arquiteto com a **LLM Online do Google (Gemini)**, siga o
 - **Google AI Studio (Recomendado — Gratuito):** Acesse [Google AI Studio (API Keys)](https://aistudio.google.com/app/apikey), faça login com sua conta Google/GCA corporativa e clique em **"Create API Key"**. Copie a chave `AIzaSy...`.
 - **Google Cloud Console (GCP / Vertex AI):** Acesse o console GCP, ative a **Generative Language API** e crie uma chave de API em *APIs e Serviços > Credenciais*.
 
-### 2. Configurar no Arquivo `.env`
-No arquivo `backend/.env` (ou na raiz para Docker):
+### 2. Configurar no Arquivo `.env` na Raiz do Projeto (Herdado Automaticamente)
+O backend conta com **descoberta e herança automática de configurações das pastas pai**. Basta configurar o `.env` uma única vez na raiz do projeto (`agente-arquiteto/.env`); o backend e o Docker herdarão as chaves sem necessidade de duplicar arquivos em subpastas:
+
 ```env
 # Ativar Google Gemini Online
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=AIzaSySuaChaveAqui123456789
 GEMINI_MODEL=gemini-2.0-flash
 ```
-*(O sistema aceita tanto `GEMINI_API_KEY` quanto `GOOGLE_API_KEY`).*
+*(O sistema aceita tanto chaves do Google AI Studio `AIzaSy...` quanto chaves Express da Vertex AI / GCA `AQ...`, e sincroniza automaticamente `GEMINI_API_KEY` e `GOOGLE_API_KEY`).*
 
 ---
 

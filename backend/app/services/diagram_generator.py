@@ -1,19 +1,20 @@
-"""ArchiMate Diagram Generator (Etapa 6).
+"""Gerador de Diagramas ArchiMate (Etapa 6).
 
-Generates high-fidelity SVG diagrams conformant with the ArchiMate 3.2 visual notation:
-- Distinct layer groupings (Business, Application, Technology).
-- Standard ArchiMate color palettes:
-    * Business: Warm Yellow (#FFF9C4 / #FBC02D)
-    * Application: Sky Blue / Cyan (#E1F5FE / #0288D1)
-    * Technology: Pale Green (#E8F5E9 / #388E3C)
-- Visual element glyphs in the upper-right corner:
-    * Application Component (rectangle with two protruding tabs)
-    * Application Service (rounded capsule)
-    * Data Object (folded document page)
-    * System Software / Node (3D isometric cube)
-    * Business Actor (actor icon)
-- Proper relationship arrowheads (Serving, Access, Realization, Assignment, Flow).
-- Clean layered layout avoiding node overlap.
+Gera diagramas SVG de alta fidelidade em conformidade com a notação visual do ArchiMate 3.2:
+- Agrupamento em faixas de camadas oficiais (Channel, Business, Application, Technology).
+- Paletas de cores oficiais do padrão ArchiMate:
+    * Channel: Âmbar / Dourado (#FEF3C7 / #D97706)
+    * Business: Amarelo suave (#FFF9C4 / #FBC02D)
+    * Application: Azul ciano claro (#E1F5FE / #0288D1)
+    * Technology: Verde suave (#E8F5E9 / #388E3C)
+- Glifos visuais dos tipos de elementos no canto superior direito:
+    * Application Component (retângulo com abas salientes à esquerda)
+    * Application Service (cápsula / pílula arredondada)
+    * Data Object (documento com canto dobrado)
+    * System Software / Node (cubo 3D ou cilindro de banco de dados)
+    * Business Actor (ícone de ator)
+- Pontas de flechas padronizadas para relacionamentos (Serving, Access, Realization, Assignment, Flow).
+- Layout organizado em camadas evitando sobreposição de nós.
 """
 
 from typing import Dict, List, Tuple
@@ -32,7 +33,7 @@ from app.models.archimate import (
 
 
 class DiagramGenerator:
-    """Generates ArchiMate SVG diagrams and updates view layout coordinates in the model."""
+    """Gera diagramas ArchiMate em SVG e calcula as coordenadas de layout na visualização do modelo."""
 
     NODE_WIDTH = 290
     NODE_HEIGHT = 104
@@ -42,8 +43,8 @@ class DiagramGenerator:
 
     @classmethod
     def layout_and_render_svg(cls, model: ArchiMateModel) -> Tuple[str, ArchiMateModel]:
-        """Calculates layout for all elements, updates model view nodes, and renders full SVG."""
-        # 1. Group elements by layer
+        """Calcula o layout de todos os elementos, atualiza os nós da visão do modelo e renderiza o SVG completo."""
+        # 1. Agrupa os elementos por camada
         channel_elems = [e for e in model.elements if e.layer == ArchiMateLayer.CHANNEL]
         business_elems = [e for e in model.elements if e.layer == ArchiMateLayer.BUSINESS]
         app_elems = [e for e in model.elements if e.layer == ArchiMateLayer.APPLICATION]
@@ -61,21 +62,21 @@ class DiagramGenerator:
         if other_elems:
             layers_ordered.append(("Outros Elementos", ArchiMateLayer.PHYSICAL, other_elems))
 
-        # Filter out completely empty layers if they have 0 elements
+        # Filtra camadas completamente vazias (sem elementos)
         active_layers = [(title, layer, elems) for title, layer, elems in layers_ordered if len(elems) > 0]
         if not active_layers:
-            # Fallback if empty
+            # Fallback se não houver camadas ativas
             active_layers = [("Application Layer", ArchiMateLayer.APPLICATION, model.elements)]
 
-        # Determine canvas width based on maximum items in a single layer
+        # Determina a largura do canvas com base no número máximo de itens em uma única camada
         max_items_in_layer = max((len(elems) for _, _, elems in active_layers), default=1)
-        # Limit row width to 4 items per row; wrap if more
+        # Limita a linha a no máximo 4 itens; quebra para a próxima linha se houver mais
         max_cols = min(max(max_items_in_layer, 2), 4)
 
         band_content_width = max_cols * cls.NODE_WIDTH + (max_cols - 1) * cls.HORIZONTAL_GAP
         canvas_width = max(band_content_width + cls.PADDING * 2 + 100, 1000)
 
-        # 2. Position elements
+        # 2. Posicionamento dos elementos
         current_y = cls.PADDING + 40
         node_positions: Dict[str, Dict[str, float]] = {}
         layer_bands: List[Dict[str, any]] = []
@@ -85,7 +86,7 @@ class DiagramGenerator:
             start_y = current_y
             rows_count = (len(elems) + max_cols - 1) // max_cols if elems else 1
 
-            # Center elements horizontally inside the canvas
+            # Centraliza os elementos horizontalmente no canvas
             for idx, elem in enumerate(elems):
                 row = idx // max_cols
                 col = idx % max_cols
@@ -125,7 +126,7 @@ class DiagramGenerator:
 
         canvas_height = current_y + cls.PADDING
 
-        # 3. Create view connections
+        # 3. Criação das conexões da visão
         view_connections: List[ArchiMateViewConnection] = []
         for rel in model.relationships:
             if rel.source in node_positions and rel.target in node_positions:
@@ -135,7 +136,7 @@ class DiagramGenerator:
                     targetId=rel.target,
                 ))
 
-        # Update model's default view
+        # Atualiza a visualização padrão do modelo
         model.views = [ArchiMateView(
             id="view-main",
             name="Visão Geral da Arquitetura ArchiMate",
@@ -144,7 +145,7 @@ class DiagramGenerator:
             connections=view_connections,
         )]
 
-        # 4. Render SVG
+        # 4. Renderização do SVG
         svg = cls._render_svg_markup(
             canvas_width, canvas_height, layer_bands, node_positions, model.relationships, model.name
         )
@@ -166,10 +167,10 @@ class DiagramGenerator:
             cls._render_defs(),
         ]
 
-        # Background grid pattern
+        # Padrão de grade de fundo
         svg_parts.append(f'<rect width="{width}" height="{height}" fill="url(#grid)" />')
 
-        # Header Title
+        # Cabeçalho e Título do Diagrama
         svg_parts.append(f'''
         <g id="diagram-header" transform="translate({cls.PADDING}, 35)">
             <text x="0" y="0" font-size="20" font-weight="700" fill="#0F172A">{model_name}</text>
@@ -177,30 +178,30 @@ class DiagramGenerator:
         </g>
         ''')
 
-        # Layer bands (group containers)
+        # Faixas de contêineres de camadas
         for band in layer_bands:
             layer_info = LAYER_COLORS.get(band["layer"], LAYER_COLORS[ArchiMateLayer.APPLICATION])
             svg_parts.append(f'''
             <g id="layer-band-{band['title'].replace(' ', '_')}">
-                <!-- Layer Container Box -->
+                <!-- Caixa Contêiner da Camada -->
                 <rect x="{band['x']}" y="{band['y']}" width="{band['width']}" height="{band['height']}"
                       rx="12" ry="12" fill="{layer_info['fill']}" fill-opacity="0.25"
                       stroke="{layer_info['stroke']}" stroke-width="1.5" stroke-dasharray="6,4" />
-                <!-- Layer Banner / Title Tab -->
+                <!-- Banner de Identificação da Camada -->
                 <rect x="{band['x'] + 16}" y="{band['y'] - 14}" width="{len(band['title']) * 9 + 30}" height="26"
                       rx="6" ry="6" fill="{layer_info['stroke']}" />
                 <text x="{band['x'] + 26}" y="{band['y'] + 4}" font-size="12" font-weight="700" fill="#FFFFFF">{band['title']}</text>
             </g>
             ''')
 
-        # Relationships (render lines first so they are behind element boxes)
+        # Relacionamentos (linhas renderizadas antes dos nós para ficarem atrás das caixas)
         for rel in relationships:
             if rel.source in node_positions and rel.target in node_positions:
                 src_pos = node_positions[rel.source]
                 tgt_pos = node_positions[rel.target]
                 svg_parts.append(cls._render_relationship(rel, src_pos, tgt_pos))
 
-        # Elements (nodes)
+        # Elementos (nós do diagrama)
         for elem_id, pos in node_positions.items():
             svg_parts.append(cls._render_element_node(pos))
 
@@ -209,46 +210,46 @@ class DiagramGenerator:
 
     @classmethod
     def _render_defs(cls) -> str:
-        """Defines markers, arrows, glyphs and filters for ArchiMate notation."""
+        """Define marcadores, setas, glifos e filtros para a notação visual ArchiMate."""
         return '''
         <defs>
-            <!-- Background Grid -->
+            <!-- Grade de Fundo -->
             <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
                 <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E2E8F0" stroke-width="0.8" opacity="0.6"/>
             </pattern>
 
-            <!-- Drop Shadow Filter -->
+            <!-- Filtro de Sombra Suave -->
             <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
                 <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0F172A" flood-opacity="0.08" />
             </filter>
 
-            <!-- ArchiMate Relationship Markers -->
-            <!-- Serving: Open Arrow -->
+            <!-- Marcadores de Relacionamento ArchiMate -->
+            <!-- Serving: Flecha Aberta -->
             <marker id="marker-serving" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#334155" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
             </marker>
 
-            <!-- Access: Open Arrow with dashed line convention -->
+            <!-- Access: Flecha Aberta com convenção de linha tracejada -->
             <marker id="marker-access" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#0284C7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
             </marker>
 
-            <!-- Realization: Hollow Triangular Arrowhead -->
+            <!-- Realization: Flecha Triangular Vazada -->
             <marker id="marker-realization" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
                 <path d="M 0 1 L 11 6 L 0 11 Z" fill="#FFFFFF" stroke="#334155" stroke-width="1.6" stroke-linejoin="round" />
             </marker>
 
-            <!-- Assignment: Filled Circle -->
+            <!-- Assignment: Círculo Preenchido -->
             <marker id="marker-assignment" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <circle cx="5" cy="5" r="4" fill="#334155" />
             </marker>
 
-            <!-- Flow: Solid Filled Arrow -->
+            <!-- Flow: Flecha com Cabeça Sólida Preenchida -->
             <marker id="marker-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 1 L 9 5 L 0 9 Z" fill="#334155" />
             </marker>
 
-            <!-- Association: Standard simple line (no arrowhead) -->
+            <!-- Association: Linha simples padrão (sem cabeça de seta) -->
         </defs>
         '''
 
@@ -261,7 +262,7 @@ class DiagramGenerator:
         tech = elem.properties.get("technology", "")
         resp = elem.documentation or elem.properties.get("responsibility", "")
 
-        # Truncate text for box rendering (accommodates standardized names like sboot-sesg-base-atom-risco-ambiental)
+        # Trunca o texto para caber nas caixas de nós (suporta nomes padronizados como sboot-sesg-base-atom-risco-ambiental)
         name_clean = elem.name[:44] + ("..." if len(elem.name) > 44 else "")
         tech_clean = tech[:38] + ("..." if len(tech) > 38 else "")
         resp_clean = resp[:46] + ("..." if len(resp) > 46 else "")
@@ -270,36 +271,36 @@ class DiagramGenerator:
 
         return f'''
         <g id="element-{elem.id}" filter="url(#shadow)">
-            <!-- Main Card Container -->
+            <!-- Contêiner Principal do Card -->
             <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" ry="8"
                   fill="{layer_color['fill']}" stroke="{layer_color['stroke']}" stroke-width="1.8" />
 
-            <!-- Card Header Accent -->
+            <!-- Cabeçalho do Card com Destaque de Cor -->
             <rect x="{x}" y="{y}" width="{w}" height="28" rx="8" ry="8"
                   fill="{layer_color['header']}" />
             <rect x="{x}" y="{y + 20}" width="{w}" height="8"
                   fill="{layer_color['header']}" />
 
-            <!-- ArchiMate Type Glyph -->
+            <!-- Glifo Oficial do Tipo ArchiMate -->
             {glyph_svg}
 
-            <!-- Element Type Subtitle (Small) -->
+            <!-- Subtítulo com o Tipo do Elemento -->
             <text x="{x + 10}" y="{y + 18}" font-size="9" font-weight="700" fill="{layer_color['stroke']}" letter-spacing="0.5">
                 {elem.type.value.upper()}
             </text>
 
-            <!-- Element Name -->
+            <!-- Nome do Elemento -->
             <text x="{x + 10}" y="{y + 44}" font-size="11" font-weight="700" fill="#0F172A">
                 {name_clean}
             </text>
 
-            <!-- Technology Badge/Text -->
+            <!-- Tag de Tecnologia -->
             {f"""<rect x="{x + 10}" y="{y + 54}" width="{min(len(tech_clean)*6 + 14, w - 20)}" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="{layer_color['stroke']}" stroke-width="0.8"/>
             <text x="{x + 16}" y="{y + 66}" font-size="9.5" font-weight="600" fill="{layer_color['stroke']}">
                 ⚙ {tech_clean}
             </text>""" if tech else ""}
 
-            <!-- Responsibility Snippet -->
+            <!-- Resumo da Responsabilidade Arquitetural -->
             <text x="{x + 10}" y="{y + 88}" font-size="9.5" fill="#475569" font-style="italic">
                 {resp_clean}
             </text>
@@ -308,9 +309,9 @@ class DiagramGenerator:
 
     @classmethod
     def _render_element_glyph(cls, elem_type: ArchiMateElementType, gx: float, gy: float) -> str:
-        """Renders the standard ArchiMate symbol inside the node's top-right corner."""
+        """Renderiza o símbolo oficial ArchiMate no canto superior direito do nó."""
         if elem_type == ArchiMateElementType.APPLICATION_COMPONENT:
-            # Component: box with two small tabs on left
+            # Component: retângulo com duas abas pequenas na esquerda
             return f'''
             <g transform="translate({gx}, {gy})">
                 <rect x="5" y="2" width="16" height="14" fill="none" stroke="#0288D1" stroke-width="1.4" rx="1"/>
@@ -319,7 +320,7 @@ class DiagramGenerator:
             </g>
             '''
         elif elem_type == ArchiMateElementType.APPLICATION_SERVICE or elem_type == ArchiMateElementType.TECHNOLOGY_SERVICE:
-            # Service: capsule / rounded pill
+            # Service: cápsula arredondada
             stroke_color = "#388E3C" if elem_type == ArchiMateElementType.TECHNOLOGY_SERVICE else "#0288D1"
             return f'''
             <g transform="translate({gx}, {gy})">
@@ -327,7 +328,7 @@ class DiagramGenerator:
             </g>
             '''
         elif elem_type == ArchiMateElementType.DATA_OBJECT:
-            # Data Object: folded paper
+            # Data Object: documento com dobra no canto
             return f'''
             <g transform="translate({gx + 4}, {gy})">
                 <path d="M 0 0 L 10 0 L 15 5 L 15 16 L 0 16 Z" fill="none" stroke="#0288D1" stroke-width="1.4" />
@@ -335,7 +336,7 @@ class DiagramGenerator:
             </g>
             '''
         elif elem_type in {ArchiMateElementType.NODE, ArchiMateElementType.DEVICE}:
-            # Node: 3D cube
+            # Node: cubo isométrico 3D
             return f'''
             <g transform="translate({gx}, {gy})">
                 <polygon points="4,5 12,2 20,5 12,8" fill="none" stroke="#388E3C" stroke-width="1.3" />
@@ -344,7 +345,7 @@ class DiagramGenerator:
             </g>
             '''
         elif elem_type == ArchiMateElementType.SYSTEM_SOFTWARE:
-            # System Software: database cylinder or stacked disks
+            # System Software: cilindro de banco de dados ou discos empilhados
             return f'''
             <g transform="translate({gx + 2}, {gy + 1})">
                 <ellipse cx="9" cy="4" rx="8" ry="2.5" fill="none" stroke="#388E3C" stroke-width="1.3"/>
@@ -353,7 +354,7 @@ class DiagramGenerator:
             </g>
             '''
         elif elem_type == ArchiMateElementType.BUSINESS_ACTOR:
-            # Actor: person outline
+            # Actor: silhueta de pessoa
             return f'''
             <g transform="translate({gx + 4}, {gy})">
                 <circle cx="8" cy="4" r="3" fill="none" stroke="#F57F17" stroke-width="1.4"/>
@@ -361,7 +362,7 @@ class DiagramGenerator:
             </g>
             '''
         else:
-            # Generic box
+            # Caixa genérica
             return f'''
             <g transform="translate({gx + 4}, {gy})">
                 <rect x="0" y="2" width="16" height="12" fill="none" stroke="#64748B" stroke-width="1.3" rx="2"/>
@@ -375,39 +376,39 @@ class DiagramGenerator:
         src: Dict[str, any],
         tgt: Dict[str, any]
     ) -> str:
-        """Draws orthogonal or curved connection between source and target nodes with markers."""
+        """Desenha conexão ortogonal ou curvada entre os nós de origem e destino com marcadores visuais."""
         src_cx = src["x"] + src["width"] / 2
         src_cy = src["y"] + src["height"] / 2
         tgt_cx = tgt["x"] + tgt["width"] / 2
         tgt_cy = tgt["y"] + tgt["height"] / 2
 
-        # Determine exit and entry points
+        # Determina os pontos de saída e entrada
         if abs(tgt_cy - src_cy) > abs(tgt_cx - src_cx):
-            # Vertical connection predominates
+            # Conexão vertical predominante
             if tgt_cy > src_cy:
-                # Downward
+                # Descendente
                 p1_x, p1_y = src_cx, src["y"] + src["height"]
                 p2_x, p2_y = tgt_cx, tgt["y"]
             else:
-                # Upward
+                # Ascendente
                 p1_x, p1_y = src_cx, src["y"]
                 p2_x, p2_y = tgt_cx, tgt["y"] + tgt["height"]
         else:
-            # Horizontal connection predominates
+            # Conexão horizontal predominante
             if tgt_cx > src_cx:
-                # Right
+                # Direita
                 p1_x, p1_y = src["x"] + src["width"], src_cy
                 p2_x, p2_y = tgt["x"], tgt_cy
             else:
-                # Left
+                # Esquerda
                 p1_x, p1_y = src["x"], src_cy
                 p2_x, p2_y = tgt["x"] + tgt["width"], tgt_cy
 
-        # Midpoint for label
+        # Ponto médio para o rótulo
         mid_x = (p1_x + p2_x) / 2
         mid_y = (p1_y + p2_y) / 2
 
-        # Style according to relationship type
+        # Estilo de acordo com o tipo de relacionamento ArchiMate
         stroke_color = "#334155"
         stroke_width = "1.6"
         stroke_dash = "none"
@@ -438,12 +439,12 @@ class DiagramGenerator:
             stroke_dash = "none"
             marker_end = "none"
 
-        # Cubic Bezier smooth path
+        # Traçado suave de curva Bézier cúbica
         ctrl1_y = p1_y + (p2_y - p1_y) * 0.5
         ctrl2_y = p1_y + (p2_y - p1_y) * 0.5
         path_d = f"M {p1_x} {p1_y} C {p1_x} {ctrl1_y}, {p2_x} {ctrl2_y}, {p2_x} {p2_y}"
 
-        # Extract label metadata (protocol / purpose)
+        # Extrai metadados do rótulo (protocolo e finalidade)
         protocol = rel.properties.get("protocol", "")
         pattern = rel.properties.get("communicationPattern", "")
         label_text = rel.name or protocol or rel.type.value
@@ -454,11 +455,11 @@ class DiagramGenerator:
 
         return f'''
         <g id="relation-{rel.id}">
-            <!-- Line Path -->
+            <!-- Traçado da Linha -->
             <path d="{path_d}" fill="none" stroke="{stroke_color}" stroke-width="{stroke_width}"
                   stroke-dasharray="{stroke_dash}" marker-end="{marker_end}" opacity="0.85" />
 
-            <!-- Edge Label Pill -->
+            <!-- Pílula do Rótulo de Integração -->
             <g transform="translate({mid_x - label_width / 2}, {mid_y - 10})">
                 <rect x="0" y="0" width="{label_width}" height="18" rx="9" ry="9"
                       fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />

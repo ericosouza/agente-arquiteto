@@ -1,10 +1,10 @@
-"""Architecture RAG Service for AI Software Architecture Designer.
+"""Serviço de RAG de Arquitetura para o Agente Arquiteto de Software AI.
 
-Provides grounded retrieval over official Banco BV architecture standards:
-- Technology catalog (ng, streamlit, sboot, pyweb, sbatch, dataflowbatch, gcs, pubsub, genaigke)
-- Component naming rules ([sigla-tech]-[sigla-sistema]-[modulo]-[dominio])
-- ArchiMate 3.2 official modeling and layer guidelines
-- Integration patterns and data pipelines
+Fornece recuperação fundamentada sobre as normas arquiteturais oficiais do Banco BV:
+- Catálogo de tecnologias (ng, streamlit, sboot, pyweb, sbatch, dataflowbatch, gcs, pubsub, genaigke)
+- Regras de nomenclatura de componentes ([sigla-tech]-[sigla-sistema]-[modulo]-[tipo]-[dominio])
+- Diretrizes oficiais de modelagem e camadas do ArchiMate 3.2
+- Padrões de integração e esteiras de pipelines de dados
 """
 
 import os
@@ -16,13 +16,13 @@ KNOWLEDGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "k
 
 
 class ArchitectureRAGService:
-    """Retrieval-Augmented Generation service over corporate architectural knowledge."""
+    """Serviço de Geração Aumentada por Recuperação (RAG) sobre a base de conhecimento corporativo."""
 
     _chunks_cache: Optional[List[Dict[str, Any]]] = None
 
     @classmethod
     def get_all_chunks(cls) -> List[Dict[str, Any]]:
-        """Loads and splits all markdown files in knowledge directory by section."""
+        """Carrega e particiona todos os arquivos markdown do diretório knowledge por seção."""
         if cls._chunks_cache is not None:
             return cls._chunks_cache
 
@@ -37,14 +37,14 @@ class ArchitectureRAGService:
             except Exception:
                 continue
 
-            # Split by markdown headers (# and ## and ###)
+            # Divide pelos cabeçalhos markdown (# e ## e ###)
             sections = re.split(r"(?m)^(?=#{1,3}\s+)", content)
             for sec in sections:
                 clean_sec = sec.strip()
                 if not clean_sec:
                     continue
 
-                # Extract header line
+                # Extrai a linha do título/cabeçalho
                 first_line = clean_sec.splitlines()[0].replace("#", "").strip()
                 chunks.append({
                     "source": file_name,
@@ -57,7 +57,7 @@ class ArchitectureRAGService:
 
     @classmethod
     def search(cls, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
-        """Performs lexical and keyword-density retrieval with scoring."""
+        """Executa busca léxica e de densidade de termos com pontuação de relevância."""
         chunks = cls.get_all_chunks()
         if not chunks:
             return []
@@ -71,21 +71,21 @@ class ArchitectureRAGService:
             text = (chunk["title"] + " " + chunk["content"]).lower()
             score = 0
             for token in query_tokens:
-                # Title matches give extra weight
+                # Correspondências no título recebem peso adicional
                 if token in chunk["title"].lower():
                     score += 5
-                # Exact matches in text
+                # Correspondências exatas no corpo do texto
                 count = text.count(token)
                 score += min(count, 5)
 
             if score > 0:
                 scored.append((score, chunk))
 
-        # Sort by score descending
+        # Ordena por pontuação de relevância decrescente
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [item[1] for item in scored[:top_k]]
 
-        # If few matches, append first chunks to guarantee context
+        # Se houver poucos resultados, anexa os primeiros trechos para garantir contexto
         if len(results) < top_k:
             for c in chunks:
                 if c not in results:
@@ -97,7 +97,7 @@ class ArchitectureRAGService:
 
     @classmethod
     def get_technology_catalog_summary(cls) -> str:
-        """Returns the summary of official technologies for prompt context."""
+        """Retorna o resumo das tecnologias oficiais para o contexto do prompt."""
         summary_chunks = [
             c["content"] for c in cls.get_all_chunks()
             if "catalogo" in c["source"]
@@ -106,7 +106,7 @@ class ArchitectureRAGService:
 
     @classmethod
     def get_naming_rules_summary(cls) -> str:
-        """Returns naming rules summary for prompt context."""
+        """Retorna o resumo das regras de nomenclatura para o contexto do prompt."""
         naming_chunks = [
             c["content"] for c in cls.get_all_chunks()
             if "nomenclatura" in c["source"]

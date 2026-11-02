@@ -1,4 +1,4 @@
-"""Tests for ArchiMate models and serialization."""
+"""Testes para os modelos e serialização do ArchiMate."""
 
 import pytest
 from app.models.archimate import (

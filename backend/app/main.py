@@ -1,4 +1,4 @@
-"""Main entry point for AI Software Architecture Designer FastAPI Application."""
+"""Ponto de entrada principal da aplicação FastAPI do Agente Arquiteto de Software AI."""
 
 import os
 from pathlib import Path
@@ -15,7 +15,7 @@ app = FastAPI(
     description="Agente inteligente para design e documentação de arquitetura de software no padrão ArchiMate 3.2.",
 )
 
-# CORS middleware configuration
+# Configuração do middleware de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -24,17 +24,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount REST API
+# Monta as rotas da API REST
 app.include_router(api_router)
 
-# Mount Frontend static files if built
+# Monta arquivos estáticos do Frontend se o build (dist) existir
 frontend_dist_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if frontend_dist_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist_dir / "assets")), name="assets")
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Serve static file if exists, otherwise index.html for SPA routing
+        # Serve o arquivo estático se existir, caso contrário retorna index.html para roteamento SPA
         target_file = frontend_dist_dir / full_path
         if target_file.is_file():
             return FileResponse(target_file)
