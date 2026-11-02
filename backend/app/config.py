@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     # API Keys & URLs
     GEMINI_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
 
     OPENAI_API_KEY: str = ""
@@ -40,7 +41,9 @@ class Settings(BaseSettings):
         """Determines the active provider based on configuration or available API keys."""
         if self.LLM_PROVIDER and self.LLM_PROVIDER != "auto":
             return self.LLM_PROVIDER.lower()
-        if self.GEMINI_API_KEY:
+        if self.GEMINI_API_KEY or self.GOOGLE_API_KEY:
+            if not self.GEMINI_API_KEY:
+                self.GEMINI_API_KEY = self.GOOGLE_API_KEY
             return "gemini"
         if self.OPENAI_API_KEY:
             return "openai"
