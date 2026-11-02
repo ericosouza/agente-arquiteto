@@ -1,97 +1,156 @@
-"""Tests for FastAPI endpoints including 4-prerequisite check and diagram refinement."""
+"""Tests for FastAPI endpoints: Scope Guardrail, Prerequisites (Sigla, Feature, ARQCOR),
+Personas, Brainstorm RAG, Model Generation and XML/JSON Exporters.
+"""
 
+import types
 import pytest
-from httpx import ASGITransport, AsyncClient
-from app.main import app
+from app.api.routes import (
+    get_system_info,
+    check_scope,
+    brainstorm_architecture,
+    analyze_architecture,
+    refine_architecture,
+    approve_architecture,
+    export_json,
+    export_xml,
+)
+from app.models.chat import (
+    AnalyzeRequest,
+    BrainstormRequest,
+    RefineRequest,
+    ApproveRequest,
+)
+from app.models.persona import PersonaType
 
 
-@pytest.mark.asyncio
-async def test_api_info_endpoint():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/info")
+def run_sync(coro):
+    """Executes a coroutine chain synchronously in environments where loopback socketpair is restricted."""
+    stack = [coro]
+    result = None
+    while stack:
+        current = stack[-1]
+        try:
+            val = current.send(None)
+            if isinstance(val, types.CoroutineType):
+                stack.append(val)
+        except StopIteration as e:
+            stack.pop()
+            if stack:
+                try:
+                    val2 = stack[-1].send(e.value)
+                    if isinstance(val2, types.CoroutineType):
+                        stack.append(val2)
+                except StopIteration as e2:
+                    stack.pop()
+                    if not stack:
+                        result = e2.value
+            else:
+                result = e.value
+    return result
 
-    assert response.status_code == 200
-    data = response.json()
+
+def test_api_info_endpoint():
+    data = run_sync(get_system_info())
     assert "activeProvider" in data
     assert "providers" in data
     assert "builtin" in data["providers"]
+    assert data["providers"]["builtin"]["configured"] is True
 
 
-@pytest.mark.asyncio
-async def test_api_analyze_blocks_without_4_prerequisites():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        analyze_payload = {
-            "description": "Quero desenvolver um sistema web de cadastro de produtos.",
-            "constraints": [],
-        }
-        resp = await ac.post("/api/architecture/analyze", json=analyze_payload)
-        assert resp.status_code == 200
-        data = resp.json()
-        # Proposal must be None until all 4 prerequisites are provided
-        assert data["proposal"] is None
-        assert len(data["missingPrerequisites"]) == 4
-        assert "Qual iniciativa?" in data["message"]
-        assert "Qual Sigla do projeto?" in data["message"]
-        assert "Qual feature?" in data["message"]
-        assert "Qual ARQCOR?" in data["message"]
+def test_api_scope_guardrail_blocks_out_of_scope():
+    req = AnalyzeRequest(description="Qual a receita de bolo de chocolate?")
+    res = run_sync(check_scope(req))
+    assert res["inScope"] is False
+    assert "escopo" in res["refusalMessage"].lower()
 
 
-@pytest.mark.asyncio
-async def test_api_analyze_refine_and_approve_flow():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        # 1. Analyze with the 4 mandatory prerequisites
-        analyze_payload = {
-            "description": (
-                "Iniciativa: Sustentabilidade\n"
-                "Sigla: SESG\n"
-                "Feature: Risco Ambiental\n"
-                "ARQCOR: ARQ-2026\n"
-                "Sistema web em Spring Boot e Angular."
-            ),
-            "constraints": [],
-        }
-        resp = await ac.post("/api/architecture/analyze", json=analyze_payload)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["proposal"] is not None
-        assert data["diagramSvg"] is not None
-        assert "sboot-sesg-base-atom-risco-ambiental" in data["diagramSvg"]
-        proposal = data["proposal"]
+def test_api_scope_guardrail_allows_in_scope():
+    req = AnalyzeRequest(description="Gostaria de criar um sistema com backend em Spring Boot e mensageria PubSub")
+    res = run_sync(check_scope(req))
+    assert res["inScope"] is True
+    assert res["refusalMessage"] is None
 
-        # 2. Refine after first diagram creation — verify diagramSvg and proposal are updated!
-        refine_payload = {
-            "proposal": proposal,
-            "feedback": "Adicione um spring batch (sbatch) e um pubsub para eventos",
-        }
-        resp_refine = await ac.post("/api/architecture/refine", json=refine_payload)
-        assert resp_refine.status_code == 200
-        refine_data = resp_refine.json()
-        refined_proposal = refine_data["proposal"]
-        assert len(refined_proposal["components"]) > len(proposal["components"])
-        assert refine_data["diagramSvg"] is not None
-        assert "sbatch-sesg-base-" in refine_data["diagramSvg"]
-        assert "pubsub-sesg-base-" in refine_data["diagramSvg"]
 
-        # 3. Approve
-        approve_payload = {"proposal": refined_proposal}
-        resp_approve = await ac.post("/api/architecture/approve", json=approve_payload)
-        assert resp_approve.status_code == 200
-        approve_data = resp_approve.json()
+def test_api_brainstorm_endpoint():
+    req = BrainstormRequest(
+        message="Como arquitetar a esteira de mensageria para a feature de risco?",
+        persona=PersonaType.ARQUITETO,
+        history=[],
+    )
+    res = run_sync(brainstorm_architecture(req))
+    assert res.reply is not None
+    assert len(res.reply) > 20
+    assert res.persona == PersonaType.ARQUITETO
+    assert len(res.ragSourcesUsed) > 0
 
-        assert "archimateModel" in approve_data
-        assert "diagramSvg" in approve_data
-        assert "<svg" in approve_data["diagramSvg"]
-        assert approve_data["validation"]["isValid"] is True
+    # Test confirmation with 'Ok'
+    req_ok = BrainstormRequest(
+        message="Ok, pode prosseguir para a modelagem!",
+        persona=PersonaType.ENGENHEIRO,
+        history=[{"role": "assistant", "content": "Proposta de esteira apresentada."}],
+    )
+    res_ok = run_sync(brainstorm_architecture(req_ok))
+    assert res_ok.isReadyForModeling is True
 
-        # 4. Export JSON & XML
-        model = approve_data["archimateModel"]
-        resp_export_json = await ac.post("/api/architecture/export/json", json=model)
-        assert resp_export_json.status_code == 200
-        assert resp_export_json.headers["content-type"] == "application/json"
 
-        resp_export_xml = await ac.post("/api/architecture/export/xml", json=model)
-        assert resp_export_xml.status_code == 200
-        assert "application/xml" in resp_export_xml.headers["content-type"]
+def test_api_analyze_blocks_without_prerequisites():
+    req = AnalyzeRequest(
+        description="Quero desenvolver um sistema web de cadastro de produtos.",
+        constraints=[],
+    )
+    res = run_sync(analyze_architecture(req))
+    assert res.proposal is None
+    assert len(res.missingPrerequisites) == 3
+    assert "Qual Sigla do projeto?" in res.message
+    assert "Qual feature?" in res.message
+    assert "Qual ARQCOR?" in res.message
+
+
+def test_api_analyze_refine_approve_and_export_flow():
+    # 1. Analyze with the 3 mandatory prerequisites
+    req_analyze = AnalyzeRequest(
+        description=(
+            "Sigla: SESG\n"
+            "Feature: Risco Ambiental\n"
+            "ARQCOR: ARQ-2026\n"
+            "Sistema web em Spring Boot e Angular."
+        ),
+        constraints=[],
+        persona=PersonaType.ARQUITETO,
+    )
+    res_analyze = run_sync(analyze_architecture(req_analyze))
+    assert res_analyze.proposal is not None
+    assert res_analyze.diagramSvg is not None
+    assert "sboot-sesg-base-atom-risco-ambiental" in res_analyze.diagramSvg
+    proposal = res_analyze.proposal
+
+    # 2. Refine proposal
+    req_refine = RefineRequest(
+        proposal=proposal,
+        feedback="Adicione um spring batch (sbatch) e um pubsub para eventos",
+        persona=PersonaType.ENGENHEIRO,
+    )
+    res_refine = run_sync(refine_architecture(req_refine))
+    refined_proposal = res_refine.proposal
+    assert len(refined_proposal.components) > len(proposal.components)
+    assert "sbatch-sesg-base-" in res_refine.diagramSvg
+    assert "pubsub-sesg-base-" in res_refine.diagramSvg
+
+    # 3. Approve proposal
+    req_approve = ApproveRequest(proposal=refined_proposal)
+    res_approve = run_sync(approve_architecture(req_approve))
+    assert res_approve.archimateModel is not None
+    assert res_approve.diagramSvg is not None
+    assert "<svg" in res_approve.diagramSvg
+    assert res_approve.validation.isValid is True
+
+    # 4. Export JSON & XML
+    model = res_approve.archimateModel
+    json_response = run_sync(export_json(model))
+    assert json_response.media_type == "application/json"
+    assert b"elements" in json_response.body
+
+    xml_response = run_sync(export_xml(model))
+    assert xml_response.media_type == "application/xml"
+    assert b"<?xml" in xml_response.body
+    assert b"http://www.opengroup.org/xsd/archimate/3.0/" in xml_response.body

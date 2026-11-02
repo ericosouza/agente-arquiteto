@@ -22,6 +22,7 @@ interface AreaDProps {
   validation: ValidationReport | null
   isProcessing: boolean
   onApproveAndGenerate: () => void
+  onRequestAdjustments?: () => void
   onDownloadSvg: () => void
   onDownloadPng: () => void
   onDownloadJson: () => void
@@ -36,6 +37,7 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
   validation,
   isProcessing,
   onApproveAndGenerate,
+  onRequestAdjustments,
   onDownloadSvg,
   onDownloadPng,
   onDownloadJson,
@@ -98,6 +100,20 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
             </button>
           )}
 
+          {/* Loop de Ajuste: Voltar para Brainstorming */}
+          {hasDiagram && onRequestAdjustments && (
+            <button
+              onClick={onRequestAdjustments}
+              disabled={isProcessing}
+              className="btn-secondary"
+              style={{ borderColor: '#f59e0b', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Solicitar alterações retornando para o chat com a Persona"
+            >
+              <RotateCcw size={15} />
+              <span>Solicitar Ajustes</span>
+            </button>
+          )}
+
           {/* Export Buttons */}
           <div className="export-btn-group">
             <button
@@ -137,13 +153,19 @@ export const AreaD_ExportToolbar: React.FC<AreaDProps> = ({
               title="Baixar formato The Open Group ArchiMate Model Exchange (XML compatível com Archi)"
             >
               <FileDown size={15} />
-              <span>Baixar Open Exchange XML</span>
+              <span>Baixar XML (Archi)</span>
             </button>
           </div>
 
-          <button onClick={onReset} className="btn-outline-danger" title="Reiniciar projeto">
-            <RotateCcw size={15} />
-            <span>Reiniciar</span>
+          {/* Reset button */}
+          <button
+            onClick={onReset}
+            disabled={isProcessing}
+            className="btn-link text-danger"
+            title="Limpar todos os dados e reiniciar projeto"
+          >
+            <RotateCcw size={14} />
+            <span>Novo Desenho</span>
           </button>
         </div>
       </div>

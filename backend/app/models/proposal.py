@@ -6,10 +6,10 @@ from app.models.archimate import ArchiMateLayer, ArchiMateElementType, ArchiMate
 
 
 class PrerequisitesInfo(BaseModel):
-    iniciativa: Optional[str] = Field(default=None, description="Qual iniciativa?")
     sigla: Optional[str] = Field(default=None, description="Qual Sigla do projeto? (4 letras)")
     feature: Optional[str] = Field(default=None, description="Qual feature?")
     arqcor: Optional[str] = Field(default=None, description="Qual ARQCOR?")
+    iniciativa: Optional[str] = Field(default=None, description="Iniciativa (opcional)")
 
     @property
     def is_complete(self) -> bool:
@@ -17,8 +17,6 @@ class PrerequisitesInfo(BaseModel):
 
     def missing_fields(self) -> List[str]:
         missing = []
-        if not self.iniciativa or not self.iniciativa.strip():
-            missing.append("Qual iniciativa?")
         if not self.sigla or len(self.sigla.strip()) != 4 or not self.sigla.strip().isalpha():
             missing.append("Qual Sigla do projeto?")
         if not self.feature or not self.feature.strip():
@@ -80,6 +78,6 @@ class ArchitectureProposal(BaseModel):
     integrations: List[IntegrationItem] = Field(default_factory=list)
     decisions: List[ArchitecturalDecision] = Field(default_factory=list)
     nonFunctionalRequirements: List[NonFunctionalRequirement] = Field(default_factory=list)
-    prerequisites: Optional[PrerequisitesInfo] = Field(default=None, description="Pré-requisitos do projeto (Iniciativa, Sigla, Feature, ARQCOR)")
+    prerequisites: Optional[PrerequisitesInfo] = Field(default=None, description="Pré-requisitos do projeto (Sigla, Feature, ARQCOR)")
     status: str = Field(default="proposed", description="'proposed', 'modified', 'approved', 'generated'")
     version: int = Field(default=1)

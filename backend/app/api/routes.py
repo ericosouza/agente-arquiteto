@@ -7,11 +7,16 @@ from app.models.chat import (
     RefineRequest,
     ApproveRequest,
     ChatResponse,
+    BrainstormRequest,
+    BrainstormResponse,
 )
+from app.models.persona import PersonaType
 from app.models.archimate import ArchiMateModel, ValidationReport
 from app.services.architect_agent import ArchitectAgent
 from app.services.archimate_validator import ArchiMateValidator
 from app.services.exporter import ArchiMateExporter
+from app.services.scope_guardrail import ScopeGuardrail
+from app.services.brainstorm_agent import BrainstormAgent
 
 router = APIRouter(prefix="/api", tags=["Architecture"])
 
@@ -43,7 +48,7 @@ async def get_system_info():
                 "instructions": "Para utilizar, configure a variável GEMINI_API_KEY no arquivo .env",
             },
             "openai": {
-                "name": "OpenAI (GPT-4o-mini)",
+                "name": "OpenAI (GPT-4o / GPT-4o-mini)",
                 "available": True,
                 "configured": has_openai,
                 "model": settings.OPENAI_MODEL,
@@ -60,10 +65,55 @@ async def get_system_info():
     }
 
 
+@router.post("/architecture/scope-check")
+async def check_scope(request: AnalyzeRequest):
+    """Evaluates whether the user message is within the software architecture scope."""
+    is_in_scope, refusal = await ScopeGuardrail.evaluate_scope(request.description)
+    return {"inScope": is_in_scope, "refusalMessage": refusal}
+
+
+@router.post("/architecture/brainstorm", response_model=BrainstormResponse)
+async def brainstorm_architecture(request: BrainstormRequest):
+    """Interactive refinement & brainstorming step with the selected Persona and BV RAG."""
+    try:
+        persona = request.persona or PersonaType.ARQUITETO
+        history_dicts = [
+            {"role": m.role, "content": m.content} for m in (request.history or [])
+        ]
+        reply, is_ready = await BrainstormAgent.chat(
+            message=request.message,
+            history=history_dicts,
+            prerequisites=request.prerequisites,
+            persona=persona,
+        )
+        return BrainstormResponse(
+            reply=reply,
+            isReadyForModeling=is_ready,
+            prerequisites=request.prerequisites,
+            persona=persona,
+            ragSourcesUsed=["catalogo_tecnologias_bv.md", "padroes_nomenclatura_bv.md"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no brainstorm arquitetural: {str(e)}")
+
+
 @router.post("/architecture/analyze", response_model=ChatResponse)
 async def analyze_architecture(request: AnalyzeRequest):
-    """Step 1 to 4: Validates the 4 mandatory prerequisites, then generates proposal & diagram."""
+    """Workflow: Guardrail de Escopo -> Pré-requisitos (Sigla, Feature, ARQCOR) -> Persona & Geração."""
     try:
+        # 1. Guardrail de Escopo
+        is_in_scope, refusal = await ScopeGuardrail.evaluate_scope(request.description)
+        if not is_in_scope:
+            return ChatResponse(
+                message=refusal,
+                inScope=False,
+                proposal=None,
+                prerequisites=request.prerequisites,
+                missingPrerequisites=[],
+                persona=request.persona,
+            )
+
+        # 2. Extração e validação dos pré-requisitos (Sigla, Feature, ARQCOR)
         prereq = ArchitectAgent.extract_prerequisites(
             request.description,
             request.history,
@@ -74,38 +124,45 @@ async def analyze_architecture(request: AnalyzeRequest):
             missing_msg = ArchitectAgent.build_missing_prerequisites_message(prereq)
             return ChatResponse(
                 message=missing_msg,
+                inScope=True,
                 proposal=None,
                 prerequisites=prereq,
                 missingPrerequisites=prereq.missing_fields(),
+                persona=request.persona,
             )
 
-        # Combine user messages from history + current prompt for full context
+        # 3. Contexto consolidado
         user_texts = [
             m.content for m in (request.history or []) if m.role == "user" and m.content
         ]
         user_texts.append(request.description)
         full_description = "\n".join(user_texts)
 
+        # 4. Geração com a Persona Selecionada
         proposal = await ArchitectAgent.analyze_and_propose(
             full_description, request.constraints, prereq
         )
         model, diagram_svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(
             proposal
         )
+        persona_label = "Arquiteto de Software" if request.persona == PersonaType.ARQUITETO else "Engenheiro de Software"
         message = (
-            f"Pré-requisitos validados (Iniciativa: '{prereq.iniciativa}', Sigla: '{prereq.sigla.upper()}', "
-            f"Feature: '{prereq.feature}', ARQCOR: '{prereq.arqcor}').\n"
-            f"Criei o desenho de arquitetura para '{proposal.title}' com {len(proposal.components)} componentes "
-            f"padronizados e {len(proposal.integrations)} integrações."
+            f"Como **{persona_label}**, validei os pré-requisitos corporativos (Sigla: '{prereq.sigla.upper()}', "
+            f"Feature: '{prereq.feature}', ARQCOR: '{prereq.arqcor}').\n\n"
+            f"Mapeei o pipeline de dados e gerei a arquitetura para **'{proposal.title}'** com "
+            f"{len(proposal.components)} componentes padronizados e {len(proposal.integrations)} integrações."
         )
+
         return ChatResponse(
             message=message,
+            inScope=True,
             proposal=proposal,
             archimateModel=model,
             diagramSvg=diagram_svg,
             validation=validation,
             prerequisites=prereq,
             missingPrerequisites=[],
+            persona=request.persona,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar análise arquitetural: {str(e)}")
@@ -121,17 +178,20 @@ async def refine_architecture(request: RefineRequest):
         model, diagram_svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(
             updated_proposal
         )
+        persona_label = "Arquiteto de Software" if request.persona == PersonaType.ARQUITETO else "Engenheiro de Software"
         message = (
-            f"Atualizei a proposta e o desenho de arquitetura com base no seu pedido ('{request.feedback}'). "
-            f"Versão v{updated_proposal.version} gerada com {len(updated_proposal.components)} componentes."
+            f"Como **{persona_label}**, incorporei os ajustes solicitados ('{request.feedback}'). "
+            f"Versão v{updated_proposal.version} gerada com sucesso com {len(updated_proposal.components)} componentes."
         )
         return ChatResponse(
             message=message,
+            inScope=True,
             proposal=updated_proposal,
             archimateModel=model,
             diagramSvg=diagram_svg,
             validation=validation,
             prerequisites=updated_proposal.prerequisites,
+            persona=request.persona,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar arquitetura: {str(e)}")
@@ -139,7 +199,7 @@ async def refine_architecture(request: RefineRequest):
 
 @router.post("/architecture/approve", response_model=ChatResponse)
 async def approve_architecture(request: ApproveRequest):
-    """Step 6, 7 & 8: Generates official ArchiMate model, automated validation and SVG diagram."""
+    """Generates official ArchiMate model, automated validation report and SVG diagram."""
     try:
         model, diagram_svg, validation = ArchitectAgent.generate_archimate_model_from_proposal(
             request.proposal
@@ -153,6 +213,7 @@ async def approve_architecture(request: ApproveRequest):
 
         return ChatResponse(
             message=message,
+            inScope=True,
             proposal=request.proposal,
             archimateModel=model,
             diagramSvg=diagram_svg,

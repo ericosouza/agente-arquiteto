@@ -16,12 +16,14 @@ import type {
   ValidationReport,
   ChatMessage,
   PrerequisitesInfo,
+  PersonaType,
 } from './types/archimate'
 import {
   fetchSystemInfo,
   analyzeArchitecture,
   refineArchitecture,
   approveArchitecture,
+  brainstormArchitecture,
   downloadJsonModel,
   downloadXmlModel,
 } from './services/api'
@@ -35,6 +37,11 @@ export const App: React.FC = () => {
   const [diagramSvg, setDiagramSvg] = useState<string | null>(null)
   const [validation, setValidation] = useState<ValidationReport | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+
+  // Persona & Brainstorm State
+  const [persona, setPersona] = useState<PersonaType>('arquiteto')
+  const [activeMode, setActiveMode] = useState<'brainstorm' | 'direct'>('brainstorm')
+  const [isReadyForModeling, setIsReadyForModeling] = useState<boolean>(false)
 
   // Modals state
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false)
@@ -63,6 +70,71 @@ export const App: React.FC = () => {
     }
   }
 
+  const handleTriggerModeling = async (additionalContext?: string) => {
+    setIsLoading(true)
+    const combinedTexts = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content)
+
+    if (additionalContext) {
+      combinedTexts.push(additionalContext)
+    }
+
+    const descriptionToAnalyze = combinedTexts.join('\n') || 'Sistema corporativo Banco BV'
+    try {
+      const res = await analyzeArchitecture(
+        descriptionToAnalyze,
+        [],
+        messages,
+        prerequisites,
+        persona
+      )
+
+      if (res.prerequisites) {
+        setPrerequisites(res.prerequisites)
+      }
+
+      if (res.inScope === false) {
+        const refusalMsg: ChatMessage = {
+          id: `msg-ast-${Date.now()}`,
+          role: 'assistant',
+          content: res.message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }
+        setMessages((prev) => [...prev, refusalMsg])
+        return
+      }
+
+      if (res.proposal) {
+        setProposal(res.proposal)
+      }
+      if (res.archimateModel && res.diagramSvg) {
+        setArchimateModel(res.archimateModel)
+        setDiagramSvg(res.diagramSvg)
+        setValidation(res.validation || null)
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: `msg-ast-${Date.now()}`,
+        role: 'assistant',
+        content: res.message,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+      setIsReadyForModeling(false)
+    } catch (err: any) {
+      const errMsg: ChatMessage = {
+        id: `msg-err-${Date.now()}`,
+        role: 'system',
+        content: `Erro na modelagem: ${err.message || 'Falha ao processar.'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessages((prev) => [...prev, errMsg])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -76,29 +148,77 @@ export const App: React.FC = () => {
 
     try {
       if (!proposal) {
-        // Step 1: Validate prerequisites and generate initial proposal + diagram
-        const res = await analyzeArchitecture(text, [], previousMessages, prerequisites)
-        if (res.prerequisites) {
-          setPrerequisites(res.prerequisites)
+        // Mode 1: Brainstorming & RAG interaction
+        if (activeMode === 'brainstorm') {
+          const lowerText = text.trim().toLowerCase()
+          const isTriggerCall =
+            lowerText === 'ok' ||
+            lowerText.startsWith('ok,') ||
+            lowerText.includes('pode gerar') ||
+            lowerText.includes('gerar modelo')
+
+          if (isTriggerCall && (prerequisites?.sigla || previousMessages.length >= 2)) {
+            await handleTriggerModeling(text)
+            return
+          }
+
+          const res = await brainstormArchitecture(
+            text,
+            previousMessages,
+            prerequisites,
+            persona
+          )
+          if (res.prerequisites) {
+            setPrerequisites(res.prerequisites)
+          }
+          if (res.isReadyForModeling) {
+            setIsReadyForModeling(true)
+          }
+
+          const assistantMsg: ChatMessage = {
+            id: `msg-ast-${Date.now()}`,
+            role: 'assistant',
+            content: res.reply,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, assistantMsg])
+        } else {
+          // Mode 2: Direct analysis and modeling
+          const res = await analyzeArchitecture(text, [], previousMessages, prerequisites, persona)
+          if (res.prerequisites) {
+            setPrerequisites(res.prerequisites)
+          }
+
+          if (res.inScope === false) {
+            const refusalMsg: ChatMessage = {
+              id: `msg-ast-${Date.now()}`,
+              role: 'assistant',
+              content: res.message,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }
+            setMessages((prev) => [...prev, refusalMsg])
+            return
+          }
+
+          if (res.proposal) {
+            setProposal(res.proposal)
+          }
+          if (res.archimateModel && res.diagramSvg) {
+            setArchimateModel(res.archimateModel)
+            setDiagramSvg(res.diagramSvg)
+            setValidation(res.validation || null)
+          }
+          const assistantMsg: ChatMessage = {
+            id: `msg-ast-${Date.now()}`,
+            role: 'assistant',
+            content: res.message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, assistantMsg])
         }
-        if (res.proposal) {
-          setProposal(res.proposal)
-        }
-        if (res.archimateModel && res.diagramSvg) {
-          setArchimateModel(res.archimateModel)
-          setDiagramSvg(res.diagramSvg)
-          setValidation(res.validation || null)
-        }
-        const assistantMsg: ChatMessage = {
-          id: `msg-ast-${Date.now()}`,
-          role: 'assistant',
-          content: res.message,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
-        setMessages((prev) => [...prev, assistantMsg])
       } else {
-        // Step 4: Iterative Refinement — updates both proposal AND diagram immediately
-        const res = await refineArchitecture(proposal, text)
+        // Proposal already exists: Refinement loop
+        const res = await refineArchitecture(proposal, text, persona)
         if (res.proposal) {
           setProposal(res.proposal)
           if (res.archimateModel && res.diagramSvg) {
@@ -131,6 +251,19 @@ export const App: React.FC = () => {
     }
   }
 
+  const handleRequestAdjustments = () => {
+    setActiveMode('brainstorm')
+    const personaLabel =
+      persona === 'arquiteto' ? 'Arquiteto de Software BV' : 'Engenheiro de Software BV'
+    const adjustmentPrompt: ChatMessage = {
+      id: `msg-adj-${Date.now()}`,
+      role: 'assistant',
+      content: `🔄 **Modo de Ajuste Ativado**\n\nComo ${personaLabel}, estou pronto para refinar a arquitetura. O que você gostaria de modificar? (Ex: alterar tecnologias, adicionar filas PubSub, mudar o banco para PostgreSQL ou adicionar processamento Batch).`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+    setMessages((prev) => [...prev, adjustmentPrompt])
+  }
+
   const handleApproveAndGenerate = async () => {
     if (!proposal) return
     setIsLoading(true)
@@ -158,84 +291,69 @@ export const App: React.FC = () => {
     }
   }
 
-  // Component edits
-  const handleOpenEditComponent = (comp: ComponentItem) => {
-    setEditingComponent(comp)
-    setIsNewComponent(false)
-    setShowComponentModal(true)
-  }
-
+  // Component manipulation handlers
   const handleOpenAddComponent = () => {
-    const sigla = proposal?.prerequisites?.sigla?.toLowerCase() || 'proj'
-    const newComp: ComponentItem = {
-      id: `COMP-${Date.now().toString().slice(-3)}`,
-      name: `sboot-${sigla}-base-atom-novo-dominio`,
-      category: 'Backend',
-      responsibility: 'Responsabilidade do novo componente',
-      suggestedTechnology: 'Spring Boot Java',
-      justification: 'Necessidade arquitetural adicionada pelo usuário',
-      layer: 'Application',
-      archimateType: 'ApplicationComponent',
-    }
-    setEditingComponent(newComp)
+    setEditingComponent(null)
     setIsNewComponent(true)
     setShowComponentModal(true)
   }
 
-  const handleSaveComponent = (updatedComp: ComponentItem) => {
-    if (!proposal) return
-    let updatedList: ComponentItem[]
-    if (isNewComponent) {
-      updatedList = [...proposal.components, updatedComp]
-    } else {
-      updatedList = proposal.components.map((c) => (c.id === updatedComp.id ? updatedComp : c))
-    }
-
-    const updatedProposal: ArchitectureProposal = {
-      ...proposal,
-      components: updatedList,
-      version: proposal.version + 1,
-      status: 'modified',
-    }
-    setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+  const handleOpenEditComponent = (component: ComponentItem) => {
+    setEditingComponent(component)
+    setIsNewComponent(false)
+    setShowComponentModal(true)
   }
 
-  const handleDeleteComponent = (compId: string) => {
+  const handleDeleteComponent = (componentId: string) => {
     if (!proposal) return
-    if (!confirm(`Remover componente ${compId}? As integrações associadas também serão removidas.`))
-      return
-
-    const updatedComponents = proposal.components.filter((c) => c.id !== compId)
+    const updatedComponents = proposal.components.filter((c) => c.id !== componentId)
     const updatedIntegrations = proposal.integrations.filter(
-      (i) => i.sourceComponentId !== compId && i.targetComponentId !== compId
+      (i) => i.sourceComponentId !== componentId && i.targetComponentId !== componentId
     )
-
     const updatedProposal: ArchitectureProposal = {
       ...proposal,
       components: updatedComponents,
       integrations: updatedIntegrations,
-      version: proposal.version + 1,
       status: 'modified',
+      version: proposal.version + 1,
     }
     setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+    refreshDiagramFromProposal(updatedProposal)
   }
 
-  // Integrations edits
-  const handleSaveIntegrations = (updatedIntegrations: IntegrationItem[]) => {
+  const handleSaveComponent = (savedComp: ComponentItem) => {
+    if (!proposal) return
+    let updatedComponents: ComponentItem[]
+    if (isNewComponent) {
+      updatedComponents = [...proposal.components, savedComp]
+    } else {
+      updatedComponents = proposal.components.map((c) => (c.id === savedComp.id ? savedComp : c))
+    }
+    const updatedProposal: ArchitectureProposal = {
+      ...proposal,
+      components: updatedComponents,
+      status: 'modified',
+      version: proposal.version + 1,
+    }
+    setProposal(updatedProposal)
+    setShowComponentModal(false)
+    refreshDiagramFromProposal(updatedProposal)
+  }
+
+  const handleSaveIntegrations = (newIntegrations: IntegrationItem[]) => {
     if (!proposal) return
     const updatedProposal: ArchitectureProposal = {
       ...proposal,
-      integrations: updatedIntegrations,
-      version: proposal.version + 1,
+      integrations: newIntegrations,
       status: 'modified',
+      version: proposal.version + 1,
     }
     setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+    setShowIntegrationModal(false)
+    refreshDiagramFromProposal(updatedProposal)
   }
 
-  // Exports
+  // Export handlers
   const handleDownloadSvg = () => {
     if (!diagramSvg) return
     const blob = new Blob([diagramSvg], { type: 'image/svg+xml;charset=utf-8' })
@@ -257,7 +375,6 @@ export const App: React.FC = () => {
 
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      // High-res multiplier (2x for retina sharpness)
       const scale = 2
       canvas.width = (img.width || 1200) * scale
       canvas.height = (img.height || 800) * scale
@@ -308,6 +425,7 @@ export const App: React.FC = () => {
     setArchimateModel(null)
     setDiagramSvg(null)
     setValidation(null)
+    setIsReadyForModeling(false)
   }
 
   return (
@@ -326,7 +444,14 @@ export const App: React.FC = () => {
               messages={messages}
               isLoading={isLoading}
               hasProposal={Boolean(proposal)}
+              persona={persona}
+              onPersonaChange={setPersona}
+              activeMode={activeMode}
+              onModeChange={setActiveMode}
               onSendMessage={handleSendMessage}
+              onTriggerModeling={() => handleTriggerModeling()}
+              isReadyForModeling={isReadyForModeling}
+              prerequisites={prerequisites}
             />
           </div>
           <div className="grid-col-right">
@@ -357,6 +482,7 @@ export const App: React.FC = () => {
             validation={validation}
             isProcessing={isLoading}
             onApproveAndGenerate={handleApproveAndGenerate}
+            onRequestAdjustments={handleRequestAdjustments}
             onDownloadSvg={handleDownloadSvg}
             onDownloadPng={handleDownloadPng}
             onDownloadJson={handleDownloadJson}

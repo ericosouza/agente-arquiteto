@@ -33,6 +33,8 @@ export type ArchiMateRelationshipType =
   | 'Triggering'
   | 'Association'
 
+export type PersonaType = 'arquiteto' | 'engenheiro'
+
 export interface ComponentItem {
   id: string
   name: string
@@ -67,10 +69,10 @@ export interface ArchitecturalDecision {
 }
 
 export interface PrerequisitesInfo {
-  iniciativa?: string | null
   sigla?: string | null
   feature?: string | null
   arqcor?: string | null
+  iniciativa?: string | null
 }
 
 export interface ArchitectureProposal {
@@ -169,6 +171,14 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
+}
+
+export interface BrainstormResponse {
+  reply: string
+  isReadyForModeling: boolean
+  prerequisites?: PrerequisitesInfo | null
+  persona: PersonaType
+  ragSourcesUsed?: string[]
 }
 
 export interface SystemInfo {

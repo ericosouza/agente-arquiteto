@@ -7,10 +7,9 @@ from app.services.architect_agent import ArchitectAgent
 from app.services.exporter import ArchiMateExporter
 
 
-@pytest.mark.asyncio
-async def test_export_json_and_xml_consistency():
+def test_export_json_and_xml_consistency():
     description = "Sistema de produtos simples"
-    proposal = await ArchitectAgent.analyze_and_propose(description)
+    proposal = ArchitectAgent.propose_sync(description)
     model, _, _ = ArchitectAgent.generate_archimate_model_from_proposal(proposal)
 
     # 1. Test JSON Export

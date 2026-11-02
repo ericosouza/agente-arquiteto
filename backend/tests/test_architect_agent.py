@@ -6,19 +6,17 @@ from app.models.proposal import ArchitectureProposal, PrerequisitesInfo
 
 
 def test_extract_prerequisites_incomplete_and_complete():
-    # Incomplete prompt should identify missing fields
+    # Incomplete prompt should identify missing fields (Sigla, Feature, ARQCOR)
     incomplete_text = "Quero criar um sistema de risco ambiental com Spring Boot"
     prereq = ArchitectAgent.extract_prerequisites(incomplete_text)
     assert prereq.is_complete is False
     missing = prereq.missing_fields()
-    assert "Qual iniciativa?" in missing
     assert "Qual Sigla do projeto?" in missing
     assert "Qual feature?" in missing
     assert "Qual ARQCOR?" in missing
 
-    # Complete prompt with all 4 items
+    # Complete prompt with the 3 mandatory flowchart prerequisites
     complete_text = (
-        "Iniciativa: Sustentabilidade ESG\n"
         "Sigla: SESG\n"
         "Feature: Risco Ambiental\n"
         "ARQCOR: ARQ-2026\n"
@@ -27,22 +25,19 @@ def test_extract_prerequisites_incomplete_and_complete():
     prereq_ok = ArchitectAgent.extract_prerequisites(complete_text)
     assert prereq_ok.is_complete is True
     assert prereq_ok.sigla == "sesg"
-    assert prereq_ok.iniciativa == "Sustentabilidade ESG"
     assert prereq_ok.feature == "Risco Ambiental"
     assert prereq_ok.arqcor == "ARQ-2026"
 
 
-@pytest.mark.asyncio
-async def test_agent_component_naming_standard():
+def test_agent_component_naming_standard():
     description = (
-        "Iniciativa: Sustentabilidade\n"
         "Sigla: SESG\n"
         "Feature: Risco Ambiental\n"
         "ARQCOR: ARQ-100\n"
         "Preciso de um sistema em Spring Boot Java com Angular."
     )
     prereq = ArchitectAgent.extract_prerequisites(description)
-    proposal = await ArchitectAgent.analyze_and_propose(description, prerequisites=prereq)
+    proposal = ArchitectAgent.propose_sync(description, prerequisites=prereq)
 
     assert isinstance(proposal, ArchitectureProposal)
     comp_names = [c.name for c in proposal.components]
@@ -53,18 +48,16 @@ async def test_agent_component_naming_standard():
     assert "ng-sesg-base-risco-ambiental" in comp_names
 
 
-@pytest.mark.asyncio
-async def test_agent_portal_esg_smart_domains_channel_layer_and_mysql():
+def test_agent_portal_esg_smart_domains_channel_layer_and_mysql():
     description = (
         "preciso criar um portal web para cadastro de questões do sistema ESG para clientes do banco. "
         "O sistema deve armazenar questoes e respostas do cliente para no futuro eu gerar um relatorio.\n"
-        "Iniciativa: ESG\n"
         "Sigla: SESG\n"
         "Feature: feat\n"
         "ARQCOR: ARQ-01"
     )
     prereq = ArchitectAgent.extract_prerequisites(description)
-    proposal = await ArchitectAgent.analyze_and_propose(description, prerequisites=prereq)
+    proposal = ArchitectAgent.propose_sync(description, prerequisites=prereq)
 
     comp_map = {c.name: c for c in proposal.components}
 
@@ -90,20 +83,18 @@ async def test_agent_portal_esg_smart_domains_channel_layer_and_mysql():
     assert all(e.id != "ACTOR-USER" for e in model.elements)
 
 
-@pytest.mark.asyncio
-async def test_agent_refine_proposal_updates_components_and_diagram():
+def test_agent_refine_proposal_updates_components_and_diagram():
     description = (
-        "Iniciativa: Sustentabilidade\n"
         "Sigla: SESG\n"
         "Feature: Risco Ambiental\n"
         "ARQCOR: ARQ-100"
     )
     prereq = ArchitectAgent.extract_prerequisites(description)
-    proposal = await ArchitectAgent.analyze_and_propose(description, prerequisites=prereq)
+    proposal = ArchitectAgent.propose_sync(description, prerequisites=prereq)
 
     # Refine to add pubsub, gcs, genaigke and switch frontend to streamlit
     feedback = "Troque o frontend para streamlit e adicione pubsub, bucket gcs e agente genaigke"
-    refined = await ArchitectAgent.refine_proposal(proposal, feedback)
+    refined = ArchitectAgent.refine_sync(proposal, feedback)
 
     assert refined.version > proposal.version
     names = [c.name for c in refined.components]

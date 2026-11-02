@@ -5,18 +5,22 @@ import type {
   ValidationReport,
   ChatMessage,
   PrerequisitesInfo,
+  PersonaType,
+  BrainstormResponse,
 } from '../types/archimate'
 
 const API_BASE = '/api'
 
 export interface ChatResponsePayload {
   message: string
+  inScope?: boolean
   proposal?: ArchitectureProposal
   validation?: ValidationReport
   archimateModel?: ArchiMateModel
   diagramSvg?: string
   prerequisites?: PrerequisitesInfo
   missingPrerequisites?: string[]
+  persona?: PersonaType
 }
 
 export async function fetchSystemInfo(): Promise<SystemInfo> {
@@ -25,11 +29,35 @@ export async function fetchSystemInfo(): Promise<SystemInfo> {
   return res.json()
 }
 
+export async function brainstormArchitecture(
+  message: string,
+  history: ChatMessage[] = [],
+  prerequisites?: PrerequisitesInfo | null,
+  persona: PersonaType = 'arquiteto'
+): Promise<BrainstormResponse> {
+  const res = await fetch(`${API_BASE}/architecture/brainstorm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      history,
+      prerequisites: prerequisites || undefined,
+      persona,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Erro no brainstorm' }))
+    throw new Error(err.detail || 'Falha na sessão de brainstorm')
+  }
+  return res.json()
+}
+
 export async function analyzeArchitecture(
   description: string,
   constraints: string[] = [],
   history: ChatMessage[] = [],
-  prerequisites?: PrerequisitesInfo | null
+  prerequisites?: PrerequisitesInfo | null,
+  persona: PersonaType = 'arquiteto'
 ): Promise<ChatResponsePayload> {
   const res = await fetch(`${API_BASE}/architecture/analyze`, {
     method: 'POST',
@@ -39,6 +67,7 @@ export async function analyzeArchitecture(
       constraints,
       history,
       prerequisites: prerequisites || undefined,
+      persona,
     }),
   })
   if (!res.ok) {
@@ -50,12 +79,13 @@ export async function analyzeArchitecture(
 
 export async function refineArchitecture(
   proposal: ArchitectureProposal,
-  feedback: string
+  feedback: string,
+  persona: PersonaType = 'arquiteto'
 ): Promise<ChatResponsePayload> {
   const res = await fetch(`${API_BASE}/architecture/refine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ proposal, feedback }),
+    body: JSON.stringify({ proposal, feedback, persona }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Erro no servidor' }))
@@ -103,7 +133,7 @@ export async function downloadXmlModel(model: ArchiMateModel): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(model),
   })
-  if (!res.ok) throw new Error('Falha ao exportar XML')
+  if (!res.ok) throw new Error('Falha ao exportar XML (.archimate)')
   const blob = await res.blob()
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')

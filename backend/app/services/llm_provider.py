@@ -522,7 +522,7 @@ class PrerequisiteExtractor:
             collected.append(f"• ARQCOR: {info.arqcor}")
 
         lines = [
-            "Antes de continuar e criar o desenho de arquitetura, preciso que você informe os 4 pré-requisitos obrigatórios:"
+            "Para prosseguirmos com a modelagem no Archi, confirme os pré-requisitos corporativos (Sigla, Feature e ARQCOR):"
         ]
         for q in missing:
             lines.append(f"- {q}")
@@ -1716,20 +1716,21 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]] = None,
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
         provider = settings.detect_active_provider()
         logger.info(f"Active LLM provider: {provider}")
 
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
-                raw = await cls._call_gemini_for_proposal(description, constraints, prerequisites)
+                raw = await cls._call_gemini_for_proposal(description, constraints, prerequisites, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prerequisites, description=description)
             except Exception as e:
                 logger.warning(f"Gemini API call failed: {e}. Falling back to Builtin Expert Engine.")
 
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
-                raw = await cls._call_openai_for_proposal(description, constraints, prerequisites)
+                raw = await cls._call_openai_for_proposal(description, constraints, prerequisites, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prerequisites, description=description)
             except Exception as e:
                 logger.warning(f"OpenAI API call failed: {e}. Falling back to Builtin Expert Engine.")
@@ -1744,21 +1745,21 @@ class LLMService:
         return BuiltinExpertEngine.analyze_requirement(description, constraints, prerequisites)
 
     @classmethod
-    async def refine_proposal(cls, proposal_dict: Dict[str, Any], feedback: str) -> Dict[str, Any]:
+    async def refine_proposal(cls, proposal_dict: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
         provider = settings.detect_active_provider()
         prereq_dict = proposal_dict.get("prerequisites")
         prereq = PrerequisitesInfo(**prereq_dict) if isinstance(prereq_dict, dict) else None
 
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
-                raw = await cls._call_gemini_for_refinement(proposal_dict, feedback)
+                raw = await cls._call_gemini_for_refinement(proposal_dict, feedback, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prereq)
             except Exception as e:
                 logger.warning(f"Gemini refinement failed: {e}. Falling back to Builtin Expert Engine.")
 
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
-                raw = await cls._call_openai_for_refinement(proposal_dict, feedback)
+                raw = await cls._call_openai_for_refinement(proposal_dict, feedback, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prereq)
             except Exception as e:
                 logger.warning(f"OpenAI refinement failed: {e}. Falling back to Builtin Expert Engine.")
@@ -1778,17 +1779,35 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]],
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
+        from app.models.persona import PersonaType, get_persona_system_prompt
+        from app.services.architecture_rag import ArchitectureRAGService
+
+        persona_type = persona if isinstance(persona, PersonaType) else PersonaType.ARQUITETO
+        persona_prompt = get_persona_system_prompt(persona_type)
+        rag_chunks = ArchitectureRAGService.search(description, top_k=3)
+        rag_context = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
+
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
         prereq_str = (
-            f"Iniciativa: {prerequisites.iniciativa}, Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
+            f"Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
             if prerequisites else "Extraia do texto"
         )
         prompt = f"""
-        Você é um arquiteto de soluções sênior. Responda ESTRITAMENTE em JSON puro.
+        {persona_prompt}
+
+        DIRETRIZES TÉCNICAS E RAG DO BANCO BV:
+        {rag_context}
+
         {cls.NAMING_RULES_PROMPT}
 
-        Pré-requisitos informados: {prereq_str}
+        DIRETRIZ DE INOVAÇÃO ARQUITETURAL:
+        Não utilize sempre o mesmo padrão ou template repetitivo.
+        Analise a necessidade específica e desenhe uma arquitetura sob medida para esta demanda,
+        mapeando o pipeline de dados completo (Canal -> BFF/Orquestração -> Serviços Atômicos -> Storage/Mensageria).
+
+        Pré-requisitos corporativos: {prereq_str}
         Descrição da necessidade: "{description}"
         Restrições: {constraints or []}
 
@@ -1807,7 +1826,7 @@ class LLMService:
             return json.loads(cls._clean_json(raw_text))
 
     @classmethod
-    async def _call_gemini_for_refinement(cls, proposal: Dict[str, Any], feedback: str) -> Dict[str, Any]:
+    async def _call_gemini_for_refinement(cls, proposal: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
         prompt = f"""
         {cls.NAMING_RULES_PROMPT}
@@ -1838,20 +1857,40 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]],
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
+        from app.models.persona import PersonaType, get_persona_system_prompt
+        from app.services.architecture_rag import ArchitectureRAGService
+
+        persona_type = persona if isinstance(persona, PersonaType) else PersonaType.ARQUITETO
+        persona_prompt = get_persona_system_prompt(persona_type)
+        rag_chunks = ArchitectureRAGService.search(description, top_k=3)
+        rag_context = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
+
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "Content-Type": "application/json",
         }
         prereq_str = (
-            f"Iniciativa: {prerequisites.iniciativa}, Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
+            f"Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
             if prerequisites else "Extraia do texto"
         )
         prompt = f"""
+        {persona_prompt}
+
+        DIRETRIZES TÉCNICAS E RAG DO BANCO BV:
+        {rag_context}
+
         {cls.NAMING_RULES_PROMPT}
-        Pré-requisitos: {prereq_str}
-        Descrição da necessidade do sistema: "{description}"
+
+        DIRETRIZ DE INOVAÇÃO ARQUITETURAL:
+        Não utilize sempre o mesmo padrão ou template repetitivo.
+        Desenhe uma arquitetura sob medida para esta demanda,
+        mapeando o pipeline de dados completo (Canal -> BFF/Orquestração -> Serviços Atômicos -> Storage/Mensageria).
+
+        Pré-requisitos corporativos: {prereq_str}
+        Descrição da necessidade: "{description}"
         Restrições: {constraints or []}
         Responda em JSON válido com campos: id, title, summary, architecturalStyle, styleJustification, components, integrations, decisions, nonFunctionalRequirements, status, version.
         """
@@ -1870,7 +1909,7 @@ class LLMService:
             return json.loads(content)
 
     @classmethod
-    async def _call_openai_for_refinement(cls, proposal: Dict[str, Any], feedback: str) -> Dict[str, Any]:
+    async def _call_openai_for_refinement(cls, proposal: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
