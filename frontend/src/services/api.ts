@@ -144,3 +144,15 @@ export async function downloadXmlModel(model: ArchiMateModel): Promise<void> {
   document.body.removeChild(a)
   window.URL.revokeObjectURL(url)
 }
+
+
+export async function fetchFinOpsSummary(): Promise<import('../types/archimate').FinOpsSummary> {
+  const res = await fetch(`${API_BASE}/observability/finops/summary`)
+  if (!res.ok) throw new Error('Falha ao obter métricas de FinOps')
+  return res.json()
+}
+
+export async function resetFinOpsMetrics(): Promise<void> {
+  const res = await fetch(`${API_BASE}/observability/finops/reset`, { method: 'POST' })
+  if (!res.ok) throw new Error('Falha ao reiniciar métricas de FinOps')
+}

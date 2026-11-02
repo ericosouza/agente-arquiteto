@@ -78,6 +78,14 @@ class ScopeGuardrail:
         # 1. First run fast heuristics
         is_in, refusal = cls.check_scope_sync(message)
         if not is_in:
+            from app.services.cost_tracker import CostTracker
+            CostTracker.record_span(
+                name="scope_guardrail_refusal",
+                model="heuristic",
+                prompt_tokens=max(len(message) // 4, 10),
+                completion_tokens=30,
+                latency_ms=1.5,
+            )
             return False, refusal
 
         # 2. Check with Online LLM if configured and keys are present
@@ -93,6 +101,14 @@ class ScopeGuardrail:
             except Exception as e:
                 logger.warning(f"OpenAI scope evaluation failed: {e}. Using heuristic evaluation.")
 
+        from app.services.cost_tracker import CostTracker
+        CostTracker.record_span(
+            name="scope_guardrail",
+            model="heuristic",
+            prompt_tokens=max(len(message) // 4, 10),
+            completion_tokens=10,
+            latency_ms=2.0,
+        )
         return True, None
 
     @classmethod

@@ -198,3 +198,42 @@ export interface SystemInfo {
     }
   >
 }
+
+
+// FinOps & Observability Types
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+export interface CostBreakdown {
+  usd: number
+  brl: number
+}
+
+export interface SpanMetric {
+  spanId: string
+  traceId: string
+  name: string
+  model: string
+  persona?: string | null
+  latencyMs: number
+  usage: TokenUsage
+  cost: CostBreakdown
+  timestamp: string
+  status: string
+  metadata?: Record<string, any>
+}
+
+export interface FinOpsSummary {
+  totalCostUsd: number
+  totalCostBrl: number
+  totalTokens: number
+  totalPromptTokens: number
+  totalCompletionTokens: number
+  totalCalls: number
+  exchangeRateUsdToBrl: number
+  activeProvider: string
+  spans: SpanMetric[]
+}

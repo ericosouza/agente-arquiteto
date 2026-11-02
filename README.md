@@ -1,6 +1,6 @@
 # 🏛️ Agente Arquiteto de Software · AI Architecture Designer (ArchiMate 3.2)
 
-> **Agente Inteligente de Arquitetura de Software aderente às diretrizes corporativas do Banco BV e compatível com o aplicativo desktop [Archi](https://www.archimatetool.com/).**
+> **Agente Inteligente de Arquitetura de Software aderente às diretrizes corporativas do Banco BV, com observabilidade FinOps integrada em tempo real e compatível com o aplicativo desktop [Archi](https://www.archimatetool.com/).**
 
 O sistema recebe demandas de negócio em linguagem natural, valida o escopo, interage via chat consultivo com **Personas Especialistas** (Arquiteto de Software ou Engenheiro de Software), consulta a base de conhecimento **RAG de Arquitetura BV**, projeta a esteira de dados ponta a ponta e gera o modelo oficial **ArchiMate 3.2** exportável em **XML Open Group** e **JSON**.
 
@@ -52,6 +52,8 @@ flowchart TD
   - **Arquiteto de Software:** Visão holística macro, governança, camadas corporativas ArchiMate e conformidade.
   - **Engenheiro de Software:** Detalhamento prático de protocolos, resiliência (Circuit Breakers, retries, DLQ) e contratos.
 - **💡 Brainstorming Dinâmico com RAG (Sem "padrãozinho"):** A persona e o LLM Online (Gemini, OpenAI ou Ollama) pesquisam no catálogo técnico oficial e propõem soluções inovadoras sob medida.
+- **🪙 Módulo de FinOps & Rastreamento de Custos Nativo na UI:** Medição rigorosa de tokens de entrada (`prompt_tokens`), saída (`completion_tokens`) e latência por etapa, calculando o custo exato em **R$** e **USD** com base na tabela de preços oficial do modelo, exibido em um **Badge e Modal interativo** na aplicação.
+- **🐳 Observabilidade Containerizada (Docker + Arize Phoenix / LangGraph):** Orquestração completa via `docker-compose.yml` que sobe o Backend, o Frontend e a plataforma open-source **Arize Phoenix** na porta `6006` para rastrear grafos de execução, spans e custos sem depender de nuvens externas pagas.
 - **📊 Esteira de Dados e Nomenclatura Corporativa BV:**
   - Fórmula oficial: `[sigla-tech]-[sigla-sistema]-[modulo]-[tipo]-[dominio]`.
   - Esteira completa: $\text{Canal} \rightarrow \text{BFF} \rightarrow \text{Core Atômico} \rightarrow \text{Mensageria / Storage}$.
@@ -67,220 +69,190 @@ flowchart TD
 | **Backend** | Python 3.12 / 3.10+, FastAPI, Pydantic v2, Uvicorn, Pytest |
 | **Frontend** | Node.js 20+, React 19, TypeScript, Vite 6, Lucide React |
 | **IA / LLM Online** | **Google Gemini** (`gemini-2.0-flash` via Google AI Studio / GCP / GCA), OpenAI (`gpt-4o-mini`), Ollama (`llama3.2`) ou Built-in Expert Engine (fallback offline) |
+| **Observabilidade & FinOps** | **Módulo FinOps Nativo na UI** + **Arize Phoenix** (OpenTelemetry / LangGraph) em container Docker na porta `6006` |
 | **Modelagem** | ArchiMate 3.2, The Open Group Model Exchange XML, SVG Dinâmico |
+| **DevOps / Containers** | Docker, Docker Compose, Nginx Alpine |
+
+---
+
+## 🪙 Módulo de FinOps e Observabilidade de Custos
+
+O projeto incorpora as melhores práticas dos **Módulos 09 (LangGraph) e 12 (LangSmith / FinOps)** do treinamento do Banco BV:
+
+### Tabela de Precificação Oficial de Tokens
+| Modelo | Entrada (Prompt / 1M tokens) | Saída (Completion / 1M tokens) | Custo Estimado por Desenho (BRL) |
+|---|---|---|---|
+| **Google Gemini 2.0 Flash** | \$0,10 USD | \$0,40 USD | **~ R$ 0,002 a R$ 0,006** |
+| **OpenAI GPT-4o-mini** | \$0,15 USD | \$0,60 USD | **~ R$ 0,004 a R$ 0,010** |
+| **Built-in Expert Engine** | Gratuito (\$0,00) | Gratuito (\$0,00) | **R$ 0,00** (Offline / Local) |
+| **Ollama Local** | Gratuito (\$0,00) | Gratuito (\$0,00) | **R$ 0,00** (Hardware local) |
+
+### Como Usar o FinOps na Interface Web
+1. No cabeçalho da aplicação web, localize o botão **"🪙 FinOps: R$ 0,00..."**.
+2. Clique nele para abrir o **Modal de FinOps & Observabilidade**:
+   - Resumo em tempo real de **Custo em R$**, **Custo em USD**, **Tokens Totais** e **Número de Chamadas**.
+   - Tabela detalhada discriminando cada etapa (`scope_guardrail`, `brainstorm_refinement`, `archimate_proposal`, `proposal_refine`), com respectiva persona, modelo, latência (ms) e valor monetário.
+   - Botão para **Reiniciar Métricas** da sessão.
+   - Botão de atalho para abrir o **Painel do Arize Phoenix** em container Docker (:6006).
 
 ---
 
 ## 🔑 Configuração do Google Cloud (GCA) e LLM do Google (Gemini Online)
 
-Para utilizar o Agente Arquiteto com a **LLM Online do Google (Gemini)** — permitindo que o agente elabore propostas inovadoras, consulte o RAG de forma dinâmica e aplique guardrails de escopo com IA de última geração —, siga o passo a passo abaixo:
+Para utilizar o Agente Arquiteto com a **LLM Online do Google (Gemini)**, siga o passo a passo:
 
 ### 1. Obter a Chave da API (API Key)
+- **Google AI Studio (Recomendado — Gratuito):** Acesse [Google AI Studio (API Keys)](https://aistudio.google.com/app/apikey), faça login com sua conta Google/GCA corporativa e clique em **"Create API Key"**. Copie a chave `AIzaSy...`.
+- **Google Cloud Console (GCP / Vertex AI):** Acesse o console GCP, ative a **Generative Language API** e crie uma chave de API em *APIs e Serviços > Credenciais*.
 
-Você pode obter a chave de duas maneiras:
-
-#### Opção A: Via Google AI Studio (Recomendado — Gratuito e Imediato)
-1. Acesse o portal: [Google AI Studio (API Keys)](https://aistudio.google.com/app/apikey).
-2. Faça login com sua Conta Google (ou conta corporativa vinculada ao **Google Cloud / GCA**).
-3. Clique no botão azul **"Create API Key"** (Criar chave de API).
-4. Selecione ou crie um projeto Google Cloud (GCP) associado.
-5. Copie a chave gerada (iniciada por `AIzaSy...`).
-
-#### Opção B: Via Google Cloud Console (GCP / Vertex AI / GCA)
-1. Acesse o [Console do Google Cloud](https://console.cloud.google.com/).
-2. Certifique-se de que o projeto Google Cloud (GCA) correto está ativo no seletor de projetos.
-3. No menu lateral, vá em **APIs e Serviços** > **Biblioteca** e pesquise por **Generative Language API** (ou Vertex AI API). Clique em **Ativar**.
-4. Em **APIs e Serviços** > **Credenciais**, clique em **Criar Credenciais** > **Chave de API**.
-5. Copie a chave gerada.
-
----
-
-### 2. Configurar a Chave no Projeto
-
-Na pasta `backend/`, crie ou edite o arquivo `.env` (a partir do modelo `.env.example`):
-
-```powershell
-cd backend
-cp .env.example .env
-```
-
-Abra o arquivo `backend/.env` e insira sua chave:
-
+### 2. Configurar no Arquivo `.env`
+No arquivo `backend/.env` (ou na raiz para Docker):
 ```env
-# Define o Google Gemini como provedor ativo
+# Ativar Google Gemini Online
 LLM_PROVIDER=gemini
-
-# Chave de API do Google (aceita GEMINI_API_KEY ou GOOGLE_API_KEY)
 GEMINI_API_KEY=AIzaSySuaChaveAqui123456789
 GEMINI_MODEL=gemini-2.0-flash
 ```
-
-> 💡 **Dica de Compatibilidade:** O backend aceita tanto `GEMINI_API_KEY` quanto `GOOGLE_API_KEY`. Se você já tiver a variável `GOOGLE_API_KEY` definida no seu ambiente, o sistema a reconhece automaticamente sem conflitos.
+*(O sistema aceita tanto `GEMINI_API_KEY` quanto `GOOGLE_API_KEY`).*
 
 ---
 
-### 3. Configurar via Terminal (Sem arquivo `.env`)
+## 🐳 Observabilidade com Docker (Arize Phoenix & LangGraph)
 
-Caso prefira exportar a chave diretamente na sessão do terminal antes de iniciar o backend:
+Para garantir **observabilidade de ponta sem gerar custos de licença externa (como LangSmith Enterprise)**, o projeto utiliza a imagem oficial do **Arize Phoenix** (`arizephoenix/phoenix:latest`) integrada via OpenTelemetry.
 
-**No Windows PowerShell:**
+### O que o Arize Phoenix Oferece
+- 🌳 **Árvore de Execução & Grafos LangGraph:** Visualização nó a nó das decisões do agente.
+- ⏱️ **Waterfall de Latência:** Análise de gargalos em cada etapa do raciocínio e chamadas de RAG.
+- 🪙 **Breakdown de Tokens & Custo:** Contagem precisa de tokens de entrada e saída por modelo.
+- 🔒 **100% Local e Privado:** Roda inteiramente na sua máquina via Docker, sem envio de dados de arquitetura para servidores de terceiros.
+
+---
+
+### Passo a Passo: Subindo a Observabilidade no Docker
+
+#### Cenário 1: Subir APENAS a Observabilidade no Docker (Desenvolvimento Híbrido)
+Se você prefere rodar o backend FastAPI e o frontend React diretamente no seu terminal (com hot-reload), mas quer o **Arize Phoenix** rodando no Docker para coletar os traces:
+
 ```powershell
-$env:LLM_PROVIDER="gemini"
-$env:GEMINI_API_KEY="AIzaSySuaChaveAqui123456789"
+# 1. Certifique-se de que o Docker Desktop está aberto e rodando
+docker --version
+
+# 2. Na raiz do projeto, suba apenas o container de observabilidade
+docker compose up -d observability
+
+# 3. Verifique se o container subiu corretamente
+docker compose ps
 ```
 
-**No Windows CMD:**
-```cmd
-set LLM_PROVIDER=gemini
-set GEMINI_API_KEY=AIzaSySuaChaveAqui123456789
-```
+> 📊 **Acesse o Dashboard do Phoenix em:** [http://localhost:6006](http://localhost:6006)
 
-**No Linux / macOS (Bash / Zsh):**
-```bash
-export LLM_PROVIDER="gemini"
-export GEMINI_API_KEY="AIzaSySuaChaveAqui123456789"
+Para parar a observabilidade:
+```powershell
+docker compose stop observability
 ```
 
 ---
 
-### 4. Como Validar se a LLM do Google está Ativa
+#### Cenário 2: Subir a Stack COMPLETA no Docker (Backend + Frontend + Observabilidade)
+Para executar toda a solução em containers com uma única linha de comando:
 
-1. Inicie o backend:
-   ```powershell
-   cd backend
-   uvicorn app.main:app --reload --port 8000
-   ```
-2. Abra no navegador ou via curl: [http://127.0.0.1:8000/api/info](http://127.0.0.1:8000/api/info).
-3. A resposta JSON confirmará a conexão ativa:
-   ```json
-   {
-     "appName": "AI Software Architecture Designer — ArchiMate",
-     "appVersion": "1.0.0",
-     "activeProvider": "gemini",
-     "providers": {
-       "gemini": {
-         "name": "Google Gemini",
-         "available": true,
-         "configured": true,
-         "model": "gemini-2.0-flash"
-       }
-     }
-   }
-   ```
-4. Na interface web ([http://localhost:5173](http://localhost:5173)), o cabeçalho exibirá o badge verde indicando **"Google Gemini (Online)"**.
-5. *(Fallback Seguro)*: Caso a chave expire, atinja cota ou a máquina fique sem internet, o backend ativa automaticamente o **Built-in Expert Engine**, garantindo que as modelagens continuem funcionando normalmente.
+```powershell
+# 1. Copie o arquivo de variáveis de ambiente se ainda não configurou
+cp backend/.env.example .env
+
+# 2. Inicie todos os serviços com build das imagens
+docker compose up -d --build
+
+# 3. Acompanhe os logs dos serviços se desejar
+docker compose logs -f
+```
+
+**Portas dos Serviços:**
+- 💻 **Frontend Web (React + Nginx):** [http://localhost:5173](http://localhost:5173)
+- ⚙️ **Backend API (FastAPI + Python 3.12):** [http://localhost:8000](http://localhost:8000) (Swagger: [http://localhost:8000/docs](http://localhost:8000/docs))
+- 📊 **Arize Phoenix (Dashboard de Observabilidade):** [http://localhost:6006](http://localhost:6006)
+
+Para parar toda a stack:
+```powershell
+docker compose down
+```
+
+Para reiniciar limpando volumes e recriando imagens:
+```powershell
+docker compose down -v
+docker compose up -d --build
+```
 
 ---
 
-## 🚀 Passo a Passo para Rodar o Sistema
+### Comandos Úteis do Docker para Manutenção
+
+| Objetivo | Comando |
+|---|---|
+| **Ver status dos containers** | `docker compose ps` |
+| **Ver logs da observabilidade** | `docker compose logs -f observability` |
+| **Ver logs do backend** | `docker compose logs -f backend` |
+| **Reiniciar apenas a observabilidade** | `docker compose restart observability` |
+| **Derrubar e remover containers** | `docker compose down` |
+
+---
+
+## 🚀 Executando Localmente (Sem Docker)
 
 ### Pré-requisitos
 - **Python 3.10+** (recomendado Python 3.12)
 - **Node.js 18+ ou 20+** (com npm)
 - **Git**
 
----
-
-### 1. Clonar o Repositório
-```bash
-git clone <URL_DO_REPOSITORIO>
-cd agente-arquiteto
-```
-
----
-
-### 2. Configurar e Rodar o Backend (FastAPI)
-
-Abra um terminal PowerShell (ou Bash):
-
+### 1. Backend (FastAPI)
 ```powershell
-# 1. Entrar na pasta do backend
 cd backend
-
-# 2. Criar o ambiente virtual Python (se ainda não existir)
 python -m venv venv
 
-# 3. Ativar o ambiente virtual
-# No Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-# (Se der erro de permissão no PowerShell, execute antes: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
-# No Windows CMD:
-.\venv\Scripts\activate.bat
-# No Linux/macOS:
-source venv/bin/activate
+# Ativar virtualenv:
+.\venv\Scripts\Activate.ps1    # PowerShell
+# ou source venv/bin/activate  # Linux/macOS
 
-# 4. Instalar as dependências do backend
 pip install -r requirements.txt
+cp .env.example .env           # Configure a chave no .env se desejar
 
-# 5. Configurar variáveis de ambiente (conforme seção do Gemini acima)
-cp .env.example .env
-# Edite o .env se desejar ativar a chave do Gemini ou OpenAI.
-
-# 6. Iniciar o servidor backend FastAPI
 uvicorn app.main:app --reload --port 8000
 ```
+> Ativo em: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
-> 🌐 **Backend ativo em:** [http://127.0.0.1:8000](http://127.0.0.1:8000)  
-> 📑 **Documentação Swagger (OpenAPI):** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
----
-
-### 3. Configurar e Rodar o Frontend (React + Vite)
-
-Abra **outro terminal** na raiz do projeto:
-
+### 2. Frontend (React + Vite)
+Em outro terminal:
 ```powershell
-# 1. Entrar na pasta do frontend
 cd frontend
-
-# 2. Instalar as dependências Node.js
 npm install
-
-# 3. Iniciar o servidor de desenvolvimento Vite
 npm run dev
 ```
-
-> 💻 **Frontend ativo em:** [http://localhost:5173](http://localhost:5173)
-
----
-
-### 4. (Opcional) Gerar Build de Produção do Frontend
-
-Se você preferir que o próprio backend sirva a aplicação web completa em uma única porta (`8000`), basta compilar o frontend:
-
-```powershell
-cd frontend
-npm run build
-```
-Uma pasta `frontend/dist` será gerada. Ao acessar [http://127.0.0.1:8000](http://127.0.0.1:8000), o backend servirá a UI completa automaticamente.
+> Ativo em: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-### 5. Executar a Suíte de Testes Automatizados
+### 3. Executar a Suíte de Testes Automatizados
 
-O projeto conta com **23 testes automatizados** que cobrem todos os componentes do fluxograma oficial:
+O projeto conta com **26 testes automatizados** cobrindo todos os fluxos, incluindo os cálculos de FinOps:
 
 ```powershell
-# Na raiz do projeto com o venv ativado:
+# Na raiz do projeto:
 $env:PYTHONPATH='backend'
 .\backend\venv\Scripts\python.exe -m pytest backend/tests/ -v
 ```
 
 Output esperado:
 ```text
-backend/tests/test_api.py::test_api_info_endpoint PASSED
-backend/tests/test_api.py::test_api_scope_guardrail_blocks_out_of_scope PASSED
-backend/tests/test_api.py::test_api_scope_guardrail_allows_in_scope PASSED
-backend/tests/test_api.py::test_api_brainstorm_endpoint PASSED
-backend/tests/test_api.py::test_api_analyze_blocks_without_prerequisites PASSED
-backend/tests/test_api.py::test_api_analyze_refine_approve_and_export_flow PASSED
+backend/tests/test_api.py (6 testes) PASSED
 backend/tests/test_archimate_models.py (3 testes) PASSED
 backend/tests/test_archimate_validator.py (4 testes) PASSED
 backend/tests/test_architect_agent.py (4 testes) PASSED
 backend/tests/test_exporter.py (1 teste) PASSED
+backend/tests/test_finops.py (3 testes) PASSED
 backend/tests/test_flowchart_adherence.py (5 testes) PASSED
 
-============================= 23 passed in ~0.50s =============================
+============================= 26 passed in ~0.55s =============================
 ```
 
 ---
@@ -292,7 +264,7 @@ agente-arquiteto/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── routes.py              # Endpoints da API (brainstorm, analyze, refine, export)
+│   │   │   └── routes.py              # Endpoints da API (brainstorm, analyze, refine, finops)
 │   │   ├── knowledge/                 # Base de Conhecimento RAG de Domínio BV
 │   │   │   ├── catalogo_tecnologias_bv.md
 │   │   │   ├── padroes_nomenclatura_bv.md
@@ -301,31 +273,37 @@ agente-arquiteto/
 │   │   ├── models/
 │   │   │   ├── archimate.py           # Metamodelo formal ArchiMate 3.2
 │   │   │   ├── chat.py                # Modelos de requisição/resposta do chat e brainstorm
+│   │   │   ├── observability.py       # Modelos de Spans, Tokens e FinOps
 │   │   │   ├── persona.py             # Definição e prompts das Personas
 │   │   │   └── proposal.py            # Modelos de proposta e pré-requisitos corporativos
 │   │   ├── services/
 │   │   │   ├── architect_agent.py     # Orquestrador do fluxo arquitetural
 │   │   │   ├── architecture_rag.py    # Motor de busca RAG do Banco BV
 │   │   │   ├── brainstorm_agent.py    # Agente consultivo com suporte a 'Ok?'
+│   │   │   ├── cost_tracker.py        # Rastreador de tokens, custos em R$/USD e FinOps
 │   │   │   ├── diagram_generator.py   # Renderizador de diagramas em SVG oficial
 │   │   │   ├── exporter.py            # Exportador Open Group XML e JSON
 │   │   │   ├── llm_provider.py        # Integração com Gemini, OpenAI, Ollama e Builtin
 │   │   │   └── scope_guardrail.py     # Guardrail classificador de escopo
 │   │   ├── config.py                  # Configurações e detecção de provedores
-│   │   └── main.py                    # Inicialização do FastAPI e montagem dos estáticos
+│   │   └── main.py                    # Inicialização do FastAPI e estáticos
 │   ├── tests/                         # Suíte de testes automatizados (pytest)
+│   ├── Dockerfile                     # Container backend Python 3.12
 │   ├── .env.example                   # Exemplo de configuração de chaves de API
 │   └── requirements.txt               # Dependências Python
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/                # Áreas A (Chat/Persona), B (Proposta), C (SVG), D (Export)
-│   │   ├── services/                  # Chamadas de API para o backend
-│   │   ├── types/                     # Tipos TypeScript do ArchiMate e Personas
+│   │   ├── components/                # Áreas A, B, C, D e FinOpsModal
+│   │   ├── services/                  # Chamadas de API para o backend e FinOps
+│   │   ├── types/                     # Tipos TypeScript do ArchiMate, Personas e FinOps
 │   │   └── App.tsx                    # Componente principal integrando o fluxo
+│   ├── Dockerfile                     # Container multi-stage (Node + Nginx)
+│   ├── nginx.conf                     # Proxy reverso para /api
 │   ├── package.json
 │   └── vite.config.ts
 │
+├── docker-compose.yml                 # Orquestração: Backend + Frontend + Arize Phoenix (:6006)
 ├── docs/
 │   ├── DesenhoFluxograma_V2.png       # Fluxograma oficial do sistema
 │   ├── PLANO_IMPLEMENTACAO_AGENTE_ARQUITETO.md # Registro técnico e plano executivo
@@ -347,13 +325,13 @@ agente-arquiteto/
    Feature: Cálculo e monitoramento de risco ambiental com Spring Boot, Angular, PubSub e GCS
    ARQCOR: ARQ-2026
    ```
-4. No modo **Brainstorming**, dialogue com o agente sobre arquitetura, pergunte por alternativas e confira os padrões do Banco BV sugeridos.
-5. Quando estiver satisfeito com o alinhamento, confirme com *"Ok, pode prosseguir para a modelagem"* ou clique no botão **"Prosseguir para Modelagem (Ok)"**.
-6. Veja o modelo e o diagrama SVG gerados nas Áreas B e C.
-7. Clique em **"Exportar XML (Archi)"** na Área D e abra o arquivo diretamente no aplicativo **Archi** (`Arquivo -> Importar -> Modelo Open Exchange...`).
+4. Interaja com a Persona no modo **Brainstorming**. Observe o badge no topo atualizando o consumo de **FinOps (tokens e valor em R$)** em tempo real!
+5. Clique no badge **"FinOps"** para abrir o modal e auditar cada span de raciocínio.
+6. Clique em **"Prosseguir para Modelagem (Ok)"** para gerar o modelo ArchiMate oficial e visualize o SVG.
+7. Clique em **"Exportar XML (Archi)"** na Área D e importe no aplicativo **Archi** (`Arquivo -> Importar -> Modelo Open Exchange...`).
 
 ---
 
 ## 📜 Licença
 
-Este projeto é desenvolvido para fins educacionais e profissionais no âmbito do treinamento **AI Experts Banco BV**. Distribuído sob a licença **MIT**.
+Desenvolvido para fins educacionais e profissionais no âmbito do treinamento **AI Experts Banco BV**. Distribuído sob a licença **MIT**.

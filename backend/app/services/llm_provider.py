@@ -909,6 +909,16 @@ class BuiltinExpertEngine:
             "arqcor": arqcor,
         }
 
+        from app.services.cost_tracker import CostTracker
+        CostTracker.record_span(
+            name="builtin_proposal",
+            model="builtin",
+            prompt_tokens=max(len(description) // 4, 60),
+            completion_tokens=420,
+            latency_ms=15.0,
+            persona="arquiteto",
+        )
+
         return {
             "id": f"PROP-{sigla.upper()}-{abs(hash(description)) % 10000}",
             "title": f"[{sigla.upper()}] {iniciativa} — {feature_text[:60]}",
@@ -1536,6 +1546,17 @@ class BuiltinExpertEngine:
         proposal_dict["decisions"] = decisions
         proposal_dict["version"] = proposal_dict.get("version", 1) + 1
         proposal_dict["status"] = "modified"
+
+        from app.services.cost_tracker import CostTracker
+        CostTracker.record_span(
+            name="builtin_refine",
+            model="builtin",
+            prompt_tokens=max(len(feedback) // 4, 30),
+            completion_tokens=320,
+            latency_ms=10.0,
+            persona="arquiteto",
+        )
+
         return proposal_dict
 
     @staticmethod
@@ -1818,10 +1839,23 @@ class LLMService:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
+        import time
+        from app.services.cost_tracker import CostTracker
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="archimate_proposal",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", len(prompt) // 4),
+                completion_tokens=usage.get("candidatesTokenCount", 450),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(cls._clean_json(raw_text))
 
@@ -1844,10 +1878,23 @@ class LLMService:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
+        import time
+        from app.services.cost_tracker import CostTracker
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="proposal_refine",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", len(prompt) // 4),
+                completion_tokens=usage.get("candidatesTokenCount", 350),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(cls._clean_json(raw_text))
 

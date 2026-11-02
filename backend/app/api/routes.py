@@ -11,6 +11,9 @@ from app.models.chat import (
     BrainstormResponse,
 )
 from app.models.persona import PersonaType
+from app.models.observability import FinOpsSummary, SpanMetric
+from app.services.cost_tracker import CostTracker
+from typing import Optional
 from app.models.archimate import ArchiMateModel, ValidationReport
 from app.services.architect_agent import ArchitectAgent
 from app.services.archimate_validator import ArchiMateValidator
@@ -251,3 +254,23 @@ async def export_xml(model: ArchiMateModel):
         media_type="application/xml",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+
+@router.get("/observability/finops/summary", response_model=FinOpsSummary)
+async def get_finops_summary():
+    """Returns FinOps cost metrics, token usage, and spans."""
+    active_provider = settings.detect_active_provider()
+    return CostTracker.get_summary(active_provider=active_provider)
+
+
+@router.get("/observability/finops/traces")
+async def get_finops_traces(trace_id: Optional[str] = None):
+    """Returns the list of recorded spans for debugging or Phoenix inspection."""
+    return CostTracker.get_spans(trace_id=trace_id)
+
+
+@router.post("/observability/finops/reset")
+async def reset_finops():
+    """Resets the in-memory FinOps session counter."""
+    CostTracker.reset()
+    return {"status": "ok", "message": "FinOps metrics reset successfully"}

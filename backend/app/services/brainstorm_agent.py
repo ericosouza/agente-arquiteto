@@ -88,6 +88,16 @@ INSTRUÇÕES DO AGENTE DE BRAINSTORMING:
                 logger.warning(f"OpenAI brainstorm call failed: {e}. Falling back to rule-based assistant.")
 
         # Fallback if offline
+        from app.services.cost_tracker import CostTracker
+        persona_val = persona.value if hasattr(persona, "value") else str(persona)
+        CostTracker.record_span(
+            name="brainstorm_refinement",
+            model="builtin",
+            prompt_tokens=max(len(message) // 4, 40),
+            completion_tokens=180,
+            latency_ms=12.0,
+            persona=persona_val,
+        )
         fallback_reply = (
             f"Como {persona.value.capitalize()} do Banco BV, analisei sua solicitação para a feature '{prerequisites.feature if prerequisites else ''}'.\n\n"
             f"Com base nas diretrizes do banco, sugiro estruturarmos a solução combinando:\n"

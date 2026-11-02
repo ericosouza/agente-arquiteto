@@ -4,8 +4,8 @@
 > - **Projeto:** Agente Arquiteto de Software para Modelagem Archi / ArchiMate 3.2
 > - **Origem do Desenho:** [`docs/DesenhoFluxograma_V2.png`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/docs/DesenhoFluxograma_V2.png)
 > - **Data de Início:** 02/11/2026
-> - **Status Geral:** 🟢 **Implementação Concluída com 100% de Aderência**
-> - **Finalidade:** Registro executivo, arquitetural e técnico de todas as etapas de implementação para garantir 100% de aderência ao fluxograma oficial do projeto.
+> - **Status Geral:** 🟢 **Implementação Concluída com 100% de Aderência + Observabilidade FinOps & Docker (Arize Phoenix / LangGraph)**
+> - **Finalidade:** Registro executivo, arquitetural e técnico de todas as etapas de implementação para garantir 100% de aderência ao fluxograma oficial do projeto e às práticas pedagógicas do curso (Módulos 09 e 12).
 
 ---
 
@@ -58,6 +58,7 @@ flowchart TD
 | **Fase 7** | **Preview Humano e Loop de Ajuste:** Validação na UI e ciclo de retorno ao refinamento mantendo o histórico de feedback. | 🟢 Concluído | [`frontend/src/components/AreaD_ExportToolbar.tsx`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/frontend/src/components/AreaD_ExportToolbar.tsx), [`frontend/src/App.tsx`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/frontend/src/App.tsx) |
 | **Fase 8** | **Entrega do Desenho em XML ArchiMate:** Exportação no formato The Open Group ArchiMate Model Exchange File Format (.xml / .archimate). | 🟢 Concluído | [`backend/app/services/exporter.py`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/services/exporter.py) |
 | **Fase 9** | **Frontend Completo (React 19 + TypeScript + Vite):** Interface com seletor de persona, chat de brainstorm, preview e botões de ação. | 🟢 Concluído | [`frontend/src/App.tsx`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/frontend/src/App.tsx), [`frontend/src/components/AreaA_ChatDescription.tsx`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/frontend/src/components/AreaA_ChatDescription.tsx) |
+| **Fase 10** | **Observabilidade FinOps & Docker (Módulos 09 e 12):** Rastreamento de tokens e custos em R$/USD em tempo real, badge e modal nativo na UI, e Docker Compose com container do **Arize Phoenix** (:6006). | 🟢 Concluído | [`backend/app/services/cost_tracker.py`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/services/cost_tracker.py), [`frontend/src/components/FinOpsModal.tsx`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/frontend/src/components/FinOpsModal.tsx), [`docker-compose.yml`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/docker-compose.yml) |
 
 ---
 
@@ -68,117 +69,158 @@ flowchart TD
 - Possui modo de dupla checagem:
   1. *Filtro heurístico rápido:* detecta palavras-chave de arquitetura, microsserviços, cloud e bancos de dados.
   2. *Avaliação via LLM Online:* caso configurado um provider ativo (Gemini, OpenAI ou Ollama), envia um prompt de classificação binária rápida.
-- Mensagem de recusa padronizada:
-  > *"Olá! Meu escopo de atuação é estritamente a **modelagem de arquiteturas de software, desenho de soluções e geração de modelos para o software Archi (ArchiMate 3.2)**. Não posso atender a solicitações fora desse domínio."*
 
 ### Fase 2: Tríade Mandatória de Pré-requisitos
-- Conforme o fluxograma oficial, o sistema exige:
-  1. **Sigla do Projeto:** 4 letras maiúsculas (ex: `SESG`, `CRDT`, `PIXX`).
-  2. **Feature:** Descrição do módulo ou funcionalidade de negócio.
-  3. **ARQCOR:** Código do comitê/registro de arquitetura corporativa (ex: `ARQ-2026`).
+- Exigência corporativa estrita: **Sigla do Projeto (4 letras)**, **Feature** e **ARQCOR**.
 - O agente retém campos parciais e questiona de forma precisa apenas os faltantes até que o usuário complete a tríade.
 
 ### Fase 3: Base de Conhecimento RAG de Arquitetura BV
-Diferenciação clara entre os tipos de conhecimento:
-- `docs/rag_knowledge_base/`: Material pedagógico do treinamento (LangGraph, MCP, Guardrails, CrewAI) para engenharia de software do time.
+- `docs/rag_knowledge_base/`: Material pedagógico do treinamento (LangGraph, MCP, Guardrails, CrewAI, Observabilidade) para referência de engenharia.
 - `backend/app/knowledge/`: Conhecimento de domínio consumido pelo Agente Arquiteto:
-  - [`catalogo_tecnologias_bv.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/catalogo_tecnologias_bv.md): Siglas tecnológicas oficiais (`ng`, `streamlit`, `sboot`, `pyweb`, `sbatch`, `dataflowbatch`, `gcs`, `pubsub`, `genaigke`).
-  - [`padroes_nomenclatura_bv.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/padroes_nomenclatura_bv.md): Fórmula oficial `[sigla-tech]-[sigla-sistema]-[modulo]-[tipo]-[dominio]`.
-  - [`diretrizes_modelagem_archimate.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/diretrizes_modelagem_archimate.md): Regras de camadas e relacionamentos ArchiMate 3.2.
-  - [`padroes_integracao_e_pipeline.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/padroes_integracao_e_pipeline.md): Pipeline síncrono, assíncrono e batch.
-- O [`ArchitectureRAGService`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/services/architecture_rag.py) faz busca por densidade léxica/semântica ranqueada com pontuação por seção.
+  - [`catalogo_tecnologias_bv.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/catalogo_tecnologias_bv.md)
+  - [`padroes_nomenclatura_bv.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/padroes_nomenclatura_bv.md)
+  - [`diretrizes_modelagem_archimate.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/diretrizes_modelagem_archimate.md)
+  - [`padroes_integracao_e_pipeline.md`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/knowledge/padroes_integracao_e_pipeline.md)
 
 ### Fase 4: Personas Arquiteto vs. Engenheiro de Software
-- Definidas no modelo [`PersonaType`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/models/persona.py):
-  - **Arquiteto de Software:** Enfoque em visão holística, camadas ArchiMate (Channel, Application, Technology), governança corporativa e desacoplamento.
-  - **Engenheiro de Software:** Enfoque em implementação prática, resiliência (Circuit Breaker, retries, dead-letter queues), protocolos (gRPC, REST, PubSub) e volumetria.
-- O prompt do sistema injeta dinamicamente o perfil da persona selecionada em todas as chamadas de LLM.
+- Definidas no modelo [`PersonaType`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/models/persona.py).
+- Injeção dinâmica no system prompt para orientar o foco das respostas e da esteira técnica.
 
 ### Fase 5: Agente de Brainstorming com LLM Online
 - Implementado em [`BrainstormAgent`](file:///c:/DEV/Projetos/Treinamento%20BV/agente-arquiteto/backend/app/services/brainstorm_agent.py).
-- Funciona como um diálogo consultivo, debatendo trade-offs com o usuário.
-- Analisa se a mensagem do usuário sinaliza aprovação para prosseguir (`"ok"`, `"pode modelar"`, `"perfeito"`, `"seguir para o desenho"`), habilitando a transição para a geração do modelo formal.
+- Diálogo consultivo sem templates repetitivos; detecta marco de aprovação ("Ok?", "pode modelar").
 
 ### Fase 6: Mapeamento de Pipeline de Dados & Ferramentas
-- O pipeline de dados é estruturado de ponta a ponta:
+- Estruturação ponta a ponta:
   $$\text{Canal (ng/streamlit)} \longrightarrow \text{BFF (sboot/pyweb)} \longrightarrow \text{Core Atômico} \longrightarrow \text{Mensageria/Storage (pubsub/gcs/mysql)}$$
-- Utiliza a skill de modelagem e validação sintática das regras ArchiMate.
 
 ### Fase 7: Preview e Loop de Ajuste
-- O usuário visualiza o diagrama SVG renderizado e os componentes identificados.
-- Ao clicar em **"Solicitar Ajustes"**, a UI devolve a conversa para o modo de refinamento com a persona, preservando as decisões anteriores.
+- Visualização do diagrama SVG interativo e botão "Solicitar Ajustes" que devolve o estado para a persona.
 
 ### Fase 8: Entrega em XML ArchiMate
-- Geração em conformidade estrita com o XML Schema da The Open Group (`http://www.opengroup.org/xsd/archimate/3.0/`).
-- Pronto para ser importado diretamente no aplicativo desktop **Archi**.
+- Geração conforme XML Schema The Open Group (`http://www.opengroup.org/xsd/archimate/3.0/`).
+
+---
+
+### Fase 10: Observabilidade de FinOps e Docker com Arize Phoenix (Módulos 09 e 12)
+
+A observabilidade corporativa foi implementada seguindo a disciplina de **FinOps Agêntico** ensinada nas Aulas 09 (LangGraph) e 12 (LangSmith Observabilidade) do treinamento do Banco BV.
+
+```mermaid
+flowchart LR
+    subgraph FrontendApp ["Interface Web React"]
+        Badge["Badge FinOps<br/>(🪙 R$ 0,0048 · 1.280 tok)"]
+        Modal["Modal Detalhado FinOps<br/>(KPIs + Tabela Spans)"]
+        Badge -->|Clique| Modal
+    end
+
+    subgraph BackendAPI ["FastAPI + CostTracker"]
+        APIEndpoints["/api/observability/finops/summary<br/>/api/observability/finops/traces"]
+        Tracker["CostTracker Service<br/>(Precificação Oficial por 1M)"]
+        
+        APIEndpoints --> Tracker
+        Tracker -->|JSON Summary| Badge
+    end
+
+    subgraph SpansObservados ["Spans Raciocínio"]
+        Span1["1. scope_guardrail"]
+        Span2["2. brainstorm_refinement"]
+        Span3["3. archimate_proposal"]
+        Span4["4. proposal_refine"]
+        
+        Tracker --> Span1
+        Tracker --> Span2
+        Tracker --> Span3
+        Tracker --> Span4
+    end
+
+    subgraph DockerContainer ["Docker Compose (:6006)"]
+        Phoenix["Arize Phoenix Container<br/>(arizephoenix/phoenix:latest)<br/>Grafos LangGraph · Spans · Latência"]
+        Tracker -.->|OpenTelemetry OTLP| Phoenix
+    end
+```
+
+#### 1. O Cálculo de Custo FinOps
+Cada invocação de LLM captura a volumetria de tokens informada pelo provedor (`usageMetadata` no Gemini e `usage` na OpenAI):
+
+$$\text{Custo USD} = \left(\text{tokens}_{\text{prompt}} \times \frac{\text{Preço}_{\text{prompt}}}{1.000.000}\right) + \left(\text{tokens}_{\text{completion}} \times \frac{\text{Preço}_{\text{completion}}}{1.000.000}\right)$$
+
+$$\text{Custo BRL} = \text{Custo USD} \times \text{Taxa Câmbio (R\$ 5,80)}$$
+
+#### 2. Spans Instrumentados no Fluxo
+- `scope_guardrail`: Avaliação binária de escopo (latência típica: 1-5ms em heurística, ~400ms em LLM online).
+- `brainstorm_refinement`: Interação conversacional com persona e contexto de RAG (~500 a 1.200 tokens).
+- `archimate_proposal`: Raciocínio profundo de modelagem de componentes, camadas e integrações (~1.000 a 2.500 tokens).
+- `proposal_refine`: Ajuste sob demanda do usuário sobre o modelo existente (~600 a 1.500 tokens).
+
+#### 3. Container Docker de Observabilidade Local (Arize Phoenix)
+Para evitar custos de assinatura com plataformas proprietárias como LangSmith Enterprise em nuvem:
+- O ecossistema inclui um container dedicado do **Arize Phoenix** (`arizephoenix/phoenix:latest`) rodando localmente na porta `6006`.
+- O Phoenix é a ferramenta open-source padrão para visualização de traces de LangChain e LangGraph, exibindo:
+  - Árvore de chamadas e grafos de nós do agente.
+  - Waterfall de latência para diagnóstico de gargalos.
+  - Tabela comparativa de tokens e custo por modelo.
 
 ---
 
 ## 4. Bateria de Testes e Validação de Qualidade
 
-A suíte completa de testes unitários e de integração foi executada com 100% de sucesso (23 testes passando em 0.50s):
+A suíte completa de testes unitários e de integração conta com **26 testes passando com 100% de sucesso em 0.59s**:
 
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.12.10, pytest-9.1.1
-collected 23 items
+collected 26 items
 
-backend/tests/test_api.py::test_api_info_endpoint PASSED                 [  4%]
-backend/tests/test_api.py::test_api_scope_guardrail_blocks_out_of_scope PASSED [  8%]
-backend/tests/test_api.py::test_api_scope_guardrail_allows_in_scope PASSED [ 13%]
-backend/tests/test_api.py::test_api_brainstorm_endpoint PASSED           [ 17%]
-backend/tests/test_api.py::test_api_analyze_blocks_without_prerequisites PASSED [ 21%]
-backend/tests/test_api.py::test_api_analyze_refine_approve_and_export_flow PASSED [ 26%]
-backend/tests/test_archimate_models.py::test_archimate_element_creation PASSED [ 30%]
-backend/tests/test_archimate_models.py::test_archimate_relationship_creation PASSED [ 34%]
-backend/tests/test_archimate_models.py::test_archimate_model_creation PASSED [ 39%]
-backend/tests/test_archimate_validator.py::test_validator_passes_valid_model PASSED [ 43%]
-backend/tests/test_archimate_validator.py::test_validator_detects_duplicate_element_id PASSED [ 47%]
-backend/tests/test_archimate_validator.py::test_validator_detects_dangling_relationship_source PASSED [ 52%]
-backend/tests/test_archimate_validator.py::test_validator_detects_dangling_relationship_target PASSED [ 56%]
-backend/tests/test_architect_agent.py::test_extract_prerequisites_incomplete_and_complete PASSED [ 60%]
-backend/tests/test_architect_agent.py::test_agent_component_naming_standard PASSED [ 65%]
-backend/tests/test_architect_agent.py::test_agent_portal_esg_smart_domains_channel_layer_and_mysql PASSED [ 69%]
-backend/tests/test_architect_agent.py::test_agent_refine_proposal_updates_components_and_diagram PASSED [ 73%]
-backend/tests/test_exporter.py::test_export_json_and_xml_consistency PASSED [ 78%]
-backend/tests/test_flowchart_adherence.py::test_scope_guardrail_in_scope PASSED [ 82%]
-backend/tests/test_flowchart_adherence.py::test_scope_guardrail_out_of_scope PASSED [ 86%]
-backend/tests/test_flowchart_adherence.py::test_prerequisites_check PASSED [ 91%]
-backend/tests/test_flowchart_adherence.py::test_architecture_rag_search PASSED [ 95%]
-backend/tests/test_flowchart_adherence.py::test_persona_types PASSED     [100%]
+backend/tests/test_api.py (6 testes) PASSED
+backend/tests/test_archimate_models.py (3 testes) PASSED
+backend/tests/test_archimate_validator.py (4 testes) PASSED
+backend/tests/test_architect_agent.py (4 testes) PASSED
+backend/tests/test_exporter.py (1 teste) PASSED
+backend/tests/test_finops.py (3 testes) PASSED
+backend/tests/test_flowchart_adherence.py (5 testes) PASSED
 
-============================= 23 passed in 0.50s ==============================
+============================= 26 passed in 0.59s ==============================
 ```
 
-O frontend também foi compilado com sucesso com TypeScript e Vite:
+O frontend compila sem erros via TypeScript e Vite:
 ```text
-dist/index.html                   0.47 kB │ gzip:  0.30 kB
-dist/assets/index-OWq8OOTR.css   17.64 kB │ gzip:  4.07 kB
-dist/assets/index-BwolBOZE.js   288.80 kB │ gzip: 85.36 kB
-✓ built in 4.80s
+✓ built in 3.48s
 ```
 
 ---
 
 ## 5. Instruções para Execução do Sistema
 
-### Backend (FastAPI)
+### Opção A: Executar com Docker Compose (Recomendado — Stack Completa)
+Com o Docker Desktop rodando:
 ```powershell
-cd backend
-.\venv\Scripts\activate
-uvicorn app.main:app --reload --port 8000
+docker compose up -d --build
 ```
-Para usar com **LLM Online**, basta configurar no arquivo `backend/.env` (ou variáveis de ambiente do sistema):
-```env
-GEMINI_API_KEY=sua_chave_gemini_aqui
-# ou
-OPENAI_API_KEY=sua_chave_openai_aqui
-```
-*(Se nenhuma chave for fornecida, o sistema usa o Built-in Expert Engine automaticamente sem quebrar).*
+- **Frontend Web:** `http://localhost:5173`
+- **Backend API:** `http://localhost:8000` (Docs em `/docs`)
+- **Arize Phoenix Observabilidade:** `http://localhost:6006`
 
-### Frontend (React + Vite)
+### Opção B: Desenvolvimento Híbrido (Apenas Observabilidade no Docker)
+Caso queira programar no backend/frontend localmente com hot-reload, mas manter o painel de observabilidade ativo:
 ```powershell
+# 1. Subir apenas o Phoenix no Docker:
+docker compose up -d observability
+
+# 2. Rodar o Backend localmente:
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 3. Rodar o Frontend localmente em outro terminal:
 cd frontend
+npm install
 npm run dev
 ```
-Acesse: `http://localhost:5173`
+
+Para encerrar os containers:
+```powershell
+docker compose down
+```

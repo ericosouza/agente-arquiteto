@@ -7,6 +7,7 @@ import { AreaD_ExportToolbar } from './components/AreaD_ExportToolbar'
 import { EditComponentModal } from './components/EditComponentModal'
 import { EditIntegrationModal } from './components/EditIntegrationModal'
 import { ProviderConfigModal } from './components/ProviderConfigModal'
+import { FinOpsModal } from './components/FinOpsModal'
 import type {
   ArchitectureProposal,
   ArchiMateModel,
@@ -17,6 +18,7 @@ import type {
   ChatMessage,
   PrerequisitesInfo,
   PersonaType,
+  FinOpsSummary,
 } from './types/archimate'
 import {
   fetchSystemInfo,
@@ -26,6 +28,8 @@ import {
   brainstormArchitecture,
   downloadJsonModel,
   downloadXmlModel,
+  fetchFinOpsSummary,
+  resetFinOpsMetrics,
 } from './services/api'
 
 export const App: React.FC = () => {
@@ -43,6 +47,19 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<'brainstorm' | 'direct'>('brainstorm')
   const [isReadyForModeling, setIsReadyForModeling] = useState<boolean>(false)
 
+  // FinOps & Observability state
+  const [finOpsSummary, setFinOpsSummary] = useState<FinOpsSummary | null>(null)
+  const [showFinOpsModal, setShowFinOpsModal] = useState<boolean>(false)
+
+  const refreshFinOps = () => {
+    fetchFinOpsSummary().then(setFinOpsSummary).catch(() => {})
+  }
+
+  const handleResetFinOps = async () => {
+    await resetFinOpsMetrics()
+    refreshFinOps()
+  }
+
   // Modals state
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false)
   const [showComponentModal, setShowComponentModal] = useState<boolean>(false)
@@ -55,6 +72,7 @@ export const App: React.FC = () => {
     fetchSystemInfo()
       .then(setSystemInfo)
       .catch((err) => console.error('Erro ao carregar status do sistema:', err))
+    refreshFinOps()
   }, [])
 
   const refreshDiagramFromProposal = async (updatedProposal: ArchitectureProposal) => {
@@ -132,6 +150,7 @@ export const App: React.FC = () => {
       setMessages((prev) => [...prev, errMsg])
     } finally {
       setIsLoading(false)
+      refreshFinOps()
     }
   }
 
@@ -248,6 +267,7 @@ export const App: React.FC = () => {
       setMessages((prev) => [...prev, errMsg])
     } finally {
       setIsLoading(false)
+      refreshFinOps()
     }
   }
 
@@ -288,6 +308,7 @@ export const App: React.FC = () => {
       alert(`Erro ao gerar arquitetura ArchiMate: ${err.message}`)
     } finally {
       setIsLoading(false)
+      refreshFinOps()
     }
   }
 
@@ -432,7 +453,9 @@ export const App: React.FC = () => {
     <div className="app-layout">
       <Header
         systemInfo={systemInfo}
+        finOpsSummary={finOpsSummary}
         onOpenConfig={() => setShowConfigModal(true)}
+        onOpenFinOps={() => setShowFinOpsModal(true)}
         onReset={handleReset}
       />
 
@@ -517,6 +540,13 @@ export const App: React.FC = () => {
           onClose={() => setShowConfigModal(false)}
         />
       )}
+
+      <FinOpsModal
+        summary={finOpsSummary}
+        isOpen={showFinOpsModal}
+        onClose={() => setShowFinOpsModal(false)}
+        onReset={handleResetFinOps}
+      />
     </div>
   )
 }
