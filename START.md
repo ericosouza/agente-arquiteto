@@ -5,6 +5,46 @@ Este guia contém o **passo a passo exato** de como configurar suas credenciais,
 
 ---
 
+## ⚡ Inicialização com Comando Único (Mais Rápido)
+
+Se você já configurou sua chave no `.env`, agora pode subir todo o projeto com **apenas 1 comando**:
+
+### Opção 1: Diretamente no Chat do Antigravity
+Basta digitar uma destas palavras aqui no chat:
+```text
+start
+```
+ou
+```text
+iniciar
+```
+*(O Antigravity identificará os serviços, iniciará o Backend e o Frontend automaticamente e fornecerá os links prontos).*
+
+---
+
+### Opção 2: Pelo Terminal PowerShell (1 Comando)
+Na raiz do projeto (`C:\DEV\Projetos\Treinamento BV\agente-arquiteto`), execute:
+```powershell
+.\start.ps1
+```
+*(O script inicia o backend na porta 8000, o frontend na porta 5173 e já abre o navegador automaticamente no link [http://localhost:5173](http://localhost:5173)).*
+
+Para encerrar os servidores a qualquer momento:
+```powershell
+.\stop.ps1
+```
+
+---
+
+### Opção 3: Pelo Windows Explorer / CMD
+Basta dar um duplo clique no arquivo:
+```text
+start.bat
+```
+Para encerrar: duplo clique em `stop.bat`.
+
+---
+
 ## 📋 Sumário
 1. [Pré-requisitos do Sistema](#1-pré-requisitos-do-sistema)
 2. [Passo 1: Configurar a Chave da API do Google (GCA / Gemini)](#passo-1-configurar-a-chave-da-api-do-google-gca--gemini)
