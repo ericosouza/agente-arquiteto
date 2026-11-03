@@ -1616,9 +1616,54 @@ class BuiltinExpertEngine:
             filtered_components.append(comp)
         raw["components"] = filtered_components
 
-        for comp in raw.get("components", []):
-            cat = comp.get("category", "")
+        # Mapeamento do nome dos componentes para seus IDs para recuperar referências em integrações
+        name_to_id = {}
+        # Converte strings simples para dicionários caso o modelo retorne lista de strings
+        safe_components = []
+        for idx, comp in enumerate(raw.get("components", []), start=1):
+            if isinstance(comp, str):
+                comp = {"name": comp, "id": f"COMP-{idx}"}
+            elif not comp.get("id"):
+                comp["id"] = f"COMP-{idx}"
+            safe_components.append(comp)
+        raw["components"] = safe_components
+
+        for idx, comp in enumerate(raw.get("components", []), start=1):
+            
             name_val = comp.get("name", "").strip()
+            cat = comp.get("category", "")
+            if not cat:
+                if name_val.startswith("ng-") or name_val.startswith("streamlit-"):
+                    cat = "Frontend"
+                elif "-bff-" in name_val:
+                    cat = "BFF"
+                elif "mysql" in name_val.lower() or "db" in name_val.lower() or "database" in name_val.lower():
+                    cat = "Database"
+                elif "pubsub" in name_val.lower() or "kafka" in name_val.lower():
+                    cat = "Messaging"
+                elif "gcs" in name_val.lower() or "storage" in name_val.lower():
+                    cat = "Infrastructure"
+                else:
+                    cat = "Backend"
+                comp["category"] = cat
+
+            if not comp.get("suggestedTechnology"):
+                if cat == "Frontend":
+                    comp["suggestedTechnology"] = "Frontend Angular 20"
+                elif cat == "Database":
+                    comp["suggestedTechnology"] = "MySQL"
+                elif cat == "Messaging":
+                    comp["suggestedTechnology"] = "Google Cloud Pub/Sub (Tópico e Subscription)"
+                elif cat == "Infrastructure":
+                    comp["suggestedTechnology"] = "Google Cloud Storage"
+                else:
+                    comp["suggestedTechnology"] = "Spring Boot Java"
+
+            if not comp.get("responsibility"):
+                comp["responsibility"] = f"Componente {cat} responsável pelas operações de {name_val or 'negócio'}."
+
+            if not comp.get("justification"):
+                comp["justification"] = f"Adoção de {comp.get('suggestedTechnology')} para atender aos requisitos arquiteturais corporativos do Banco BV."
 
             # Garante que o Frontend pertença à camada Channel Layer
             if cat == "Frontend" or name_val.startswith("ng-") or name_val.startswith("streamlit-"):
@@ -1684,15 +1729,73 @@ class BuiltinExpertEngine:
                     role_dom = domains["channel"] if (inferred_tech in ("ng", "streamlit") or tipo == "bff") else domains["atom"]
                     comp["name"] = build_component_name(inferred_tech, sigla, modulo, tipo, role_dom)
 
-        raw["integrations"] = [
-            rel for rel in raw.get("integrations", [])
-            if rel.get("sourceComponentId") not in removed_ids and rel.get("targetComponentId") not in removed_ids
-        ]
-        for rel in raw.get("integrations", []):
+        # Normaliza IDs e mapeia nomes de componentes para seus respectivos IDs caso a LLM tenha usado nomes
+        comp_lookup = {}
+        for c in raw.get("components", []):
+            comp_lookup[c["id"]] = c["id"]
+            if c.get("name"):
+                comp_lookup[c["name"]] = c["id"]
+                comp_lookup[c["name"].lower()] = c["id"]
+
+        normalized_integrations = []
+        for idx, rel in enumerate(raw.get("integrations", []), start=1):
+            if isinstance(rel, str):
+                rel = {"purpose": rel, "id": f"INT-{idx}"}
+            elif not rel.get("id"):
+                rel["id"] = f"INT-{idx}"
+            
+            s_id = rel.get("sourceComponentId") or rel.get("source") or rel.get("source_id") or rel.get("from")
+            t_id = rel.get("targetComponentId") or rel.get("target") or rel.get("target_id") or rel.get("to")
+            
+            s_mapped = comp_lookup.get(s_id, comp_lookup.get(str(s_id).lower(), s_id))
+            t_mapped = comp_lookup.get(t_id, comp_lookup.get(str(t_id).lower(), t_id))
+            
+            rel["sourceComponentId"] = str(s_mapped or f"COMP-1")
+            rel["targetComponentId"] = str(t_mapped or f"COMP-2")
+            
+            if rel.get("sourceComponentId") in removed_ids or rel.get("targetComponentId") in removed_ids:
+                continue
+
             if rel.get("relationshipType") not in valid_rel_types:
                 rel["relationshipType"] = "Serving"
             if rel.get("communicationPattern") not in ("Synchronous", "Asynchronous"):
                 rel["communicationPattern"] = "Synchronous"
+            if not rel.get("protocol"):
+                rel["protocol"] = "HTTPS / REST"
+            if not rel.get("purpose"):
+                rel["purpose"] = f"Integração entre {rel['sourceComponentId']} e {rel['targetComponentId']}."
+            normalized_integrations.append(rel)
+        raw["integrations"] = normalized_integrations
+
+        # Normaliza decisões e requisitos não-funcionais caso a LLM use campos alternativos
+        normalized_decisions = []
+        for idx, d in enumerate(raw.get("decisions", []), start=1):
+            if isinstance(d, str):
+                dec_text = d
+                rat_text = "Aderência às diretrizes corporativas do Banco BV."
+                stat = "Recomendado"
+            else:
+                dec_text = d.get("decision") or d.get("topic") or d.get("title") or f"Decisão Arquitetural {idx}"
+                rat_text = d.get("rationale") or d.get("justification") or d.get("reason") or "Aderência às diretrizes corporativas do Banco BV."
+                stat = d.get("status") or "Recomendado"
+            normalized_decisions.append({"decision": dec_text, "rationale": rat_text, "status": stat})
+        raw["decisions"] = normalized_decisions or [
+            {"decision": "Arquitetura Padronizada BV", "rationale": "Aderência ao padrão corporativo ArchiMate e catálogo técnico BV.", "status": "Recomendado"}
+        ]
+
+        normalized_nfrs = []
+        for idx, n in enumerate(raw.get("nonFunctionalRequirements", []), start=1):
+            if isinstance(n, str):
+                cat_text = "Geral"
+                desc_text = n
+            else:
+                cat_text = n.get("category") or "Segurança"
+                desc_text = n.get("description") or n.get("detail") or "Conformidade com os padrões de resiliência e segurança BV."
+            normalized_nfrs.append({"category": cat_text, "description": desc_text})
+        raw["nonFunctionalRequirements"] = normalized_nfrs or [
+            {"category": "Segurança", "description": "Autenticação via OAuth2 e isolamento de banco de dados restrito ao componente atômico."},
+            {"category": "Observabilidade", "description": "Tracing distribuído OpenTelemetry e métricas FinOps por requisição."}
+        ]
 
         return raw
 

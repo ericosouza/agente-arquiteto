@@ -17,6 +17,8 @@ logger = logging.getLogger("cost_tracker")
 # Tabela de preços por 1.000.000 (1M) de tokens em USD
 MODEL_PRICING_PER_1M: Dict[str, Dict[str, float]] = {
     # Modelos Google Gemini
+    "gemini-3.5-flash-lite": {"prompt": 0.075, "completion": 0.30},
+    "gemini-3.8-flash": {"prompt": 0.10, "completion": 0.40},
     "gemini-2.0-flash": {"prompt": 0.10, "completion": 0.40},
     "gemini-1.5-flash": {"prompt": 0.075, "completion": 0.30},
     "gemini-1.5-pro": {"prompt": 1.25, "completion": 5.00},

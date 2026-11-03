@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     # Chaves de API e Modelos
     GEMINI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
@@ -142,10 +142,7 @@ class Settings(BaseSettings):
             "Content-Type": "application/json",
             "x-goog-api-key": key,
         }
-        if key.startswith("AQ."):
-            url = f"https://aiplatform.googleapis.com/v1beta1/publishers/google/models/{model}:generateContent?key={key}"
-        else:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
         return url, headers
 
 
