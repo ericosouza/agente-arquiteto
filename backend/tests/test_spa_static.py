@@ -64,5 +64,8 @@ def test_resolver_arquivo_spa_bloqueia_saida_do_dist(tmp_path):
 
 def test_resolver_arquivo_spa_bloqueia_symlink_para_fora(tmp_path):
     dist, segredo, _ = _criar_ambiente(tmp_path)
-    (dist / "link.env").symlink_to(segredo)
+    try:
+        (dist / "link.env").symlink_to(segredo)
+    except OSError:
+        pytest.skip("Criação de links simbólicos requer privilégios de administrador no Windows")
     assert resolver_arquivo_spa(dist, "link.env") == dist.resolve() / "index.html"
