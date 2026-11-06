@@ -25,7 +25,7 @@ export const AreaC_DiagramViewer: React.FC<AreaCProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Reset zoom and pan when new svg is received
+  // Reinicializa zoom e pan quando um novo SVG é recebido
   useEffect(() => {
     if (svgMarkup) {
       setZoom(1)
@@ -41,7 +41,7 @@ export const AreaC_DiagramViewer: React.FC<AreaCProps> = ({
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return // only left click
+    if (e.button !== 0) return // apenas clique com o botão esquerdo
     setIsDragging(true)
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
   }
@@ -127,7 +127,7 @@ export const AreaC_DiagramViewer: React.FC<AreaCProps> = ({
           </div>
         )}
 
-        {/* Floating ArchiMate Layer & Glyph Legend */}
+        {/* Legenda Flutuante de Camadas e Glifos do ArchiMate */}
         {svgMarkup && showLegend && (
           <div className="floating-legend">
             <h6 className="legend-title">Convenção ArchiMate 3.2</h6>

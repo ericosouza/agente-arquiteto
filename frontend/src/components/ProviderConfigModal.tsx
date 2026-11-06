@@ -37,7 +37,7 @@ export const ProviderConfigModal: React.FC<ProviderConfigModalProps> = ({
           </div>
 
           <div className="providers-list">
-            {/* Built-in Expert Engine */}
+            {/* Motor Especialista Embutido (Offline) */}
             <div
               className={`provider-item ${
                 active === 'builtin' ? 'provider-active-card' : ''

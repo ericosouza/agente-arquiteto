@@ -50,7 +50,7 @@ export const AreaB_ArchitectureProposal: React.FC<AreaBProps> = ({
     )
   }
 
-  // Map integrations for each component for the table column
+  // Mapeia as integrações de cada componente para a coluna da tabela
   const getIntegrationsSummary = (compId: string): string => {
     const outgoing = proposal.integrations.filter((i) => i.sourceComponentId === compId)
     const incoming = proposal.integrations.filter((i) => i.targetComponentId === compId)

@@ -7,6 +7,7 @@ import { AreaD_ExportToolbar } from './components/AreaD_ExportToolbar'
 import { EditComponentModal } from './components/EditComponentModal'
 import { EditIntegrationModal } from './components/EditIntegrationModal'
 import { ProviderConfigModal } from './components/ProviderConfigModal'
+import { FinOpsModal } from './components/FinOpsModal'
 import type {
   ArchitectureProposal,
   ArchiMateModel,
@@ -16,14 +17,19 @@ import type {
   ValidationReport,
   ChatMessage,
   PrerequisitesInfo,
+  PersonaType,
+  FinOpsSummary,
 } from './types/archimate'
 import {
   fetchSystemInfo,
   analyzeArchitecture,
   refineArchitecture,
   approveArchitecture,
+  brainstormArchitecture,
   downloadJsonModel,
   downloadXmlModel,
+  fetchFinOpsSummary,
+  resetFinOpsMetrics,
 } from './services/api'
 
 export const App: React.FC = () => {
@@ -36,18 +42,37 @@ export const App: React.FC = () => {
   const [validation, setValidation] = useState<ValidationReport | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  // Modals state
+  // Estado da Persona e Brainstorm
+  const [persona, setPersona] = useState<PersonaType>('arquiteto')
+  const [activeMode, setActiveMode] = useState<'brainstorm' | 'direct'>('brainstorm')
+  const [isReadyForModeling, setIsReadyForModeling] = useState<boolean>(false)
+
+  // Estado de FinOps e Observabilidade
+  const [finOpsSummary, setFinOpsSummary] = useState<FinOpsSummary | null>(null)
+  const [showFinOpsModal, setShowFinOpsModal] = useState<boolean>(false)
+
+  const refreshFinOps = () => {
+    fetchFinOpsSummary().then(setFinOpsSummary).catch(() => {})
+  }
+
+  const handleResetFinOps = async () => {
+    await resetFinOpsMetrics()
+    refreshFinOps()
+  }
+
+  // Estado dos Modais
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false)
   const [showComponentModal, setShowComponentModal] = useState<boolean>(false)
   const [showIntegrationModal, setShowIntegrationModal] = useState<boolean>(false)
   const [editingComponent, setEditingComponent] = useState<ComponentItem | null>(null)
   const [isNewComponent, setIsNewComponent] = useState<boolean>(false)
 
-  // Load system info on mount
+  // Carrega status do sistema ao montar o componente
   useEffect(() => {
     fetchSystemInfo()
       .then(setSystemInfo)
       .catch((err) => console.error('Erro ao carregar status do sistema:', err))
+    refreshFinOps()
   }, [])
 
   const refreshDiagramFromProposal = async (updatedProposal: ArchitectureProposal) => {
@@ -60,6 +85,72 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Erro ao atualizar diagrama:', err)
+    }
+  }
+
+  const handleTriggerModeling = async (additionalContext?: string) => {
+    setIsLoading(true)
+    const combinedTexts = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content)
+
+    if (additionalContext) {
+      combinedTexts.push(additionalContext)
+    }
+
+    const descriptionToAnalyze = combinedTexts.join('\n') || 'Sistema corporativo Banco BV'
+    try {
+      const res = await analyzeArchitecture(
+        descriptionToAnalyze,
+        [],
+        messages,
+        prerequisites,
+        persona
+      )
+
+      if (res.prerequisites) {
+        setPrerequisites(res.prerequisites)
+      }
+
+      if (res.inScope === false) {
+        const refusalMsg: ChatMessage = {
+          id: `msg-ast-${Date.now()}`,
+          role: 'assistant',
+          content: res.message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }
+        setMessages((prev) => [...prev, refusalMsg])
+        return
+      }
+
+      if (res.proposal) {
+        setProposal(res.proposal)
+      }
+      if (res.archimateModel && res.diagramSvg) {
+        setArchimateModel(res.archimateModel)
+        setDiagramSvg(res.diagramSvg)
+        setValidation(res.validation || null)
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: `msg-ast-${Date.now()}`,
+        role: 'assistant',
+        content: res.message,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+      setIsReadyForModeling(false)
+    } catch (err: any) {
+      const errMsg: ChatMessage = {
+        id: `msg-err-${Date.now()}`,
+        role: 'system',
+        content: `Erro na modelagem: ${err.message || 'Falha ao processar.'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+      setMessages((prev) => [...prev, errMsg])
+    } finally {
+      setIsLoading(false)
+      refreshFinOps()
     }
   }
 
@@ -76,29 +167,77 @@ export const App: React.FC = () => {
 
     try {
       if (!proposal) {
-        // Step 1: Validate prerequisites and generate initial proposal + diagram
-        const res = await analyzeArchitecture(text, [], previousMessages, prerequisites)
-        if (res.prerequisites) {
-          setPrerequisites(res.prerequisites)
+        // Modo 1: Interação de Brainstorming e RAG
+        if (activeMode === 'brainstorm') {
+          const lowerText = text.trim().toLowerCase()
+          const isTriggerCall =
+            lowerText === 'ok' ||
+            lowerText.startsWith('ok,') ||
+            lowerText.includes('pode gerar') ||
+            lowerText.includes('gerar modelo')
+
+          if (isTriggerCall && (prerequisites?.sigla || previousMessages.length >= 2)) {
+            await handleTriggerModeling(text)
+            return
+          }
+
+          const res = await brainstormArchitecture(
+            text,
+            previousMessages,
+            prerequisites,
+            persona
+          )
+          if (res.prerequisites) {
+            setPrerequisites(res.prerequisites)
+          }
+          if (res.isReadyForModeling) {
+            setIsReadyForModeling(true)
+          }
+
+          const assistantMsg: ChatMessage = {
+            id: `msg-ast-${Date.now()}`,
+            role: 'assistant',
+            content: res.reply,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, assistantMsg])
+        } else {
+          // Modo 2: Análise direta e modelagem
+          const res = await analyzeArchitecture(text, [], previousMessages, prerequisites, persona)
+          if (res.prerequisites) {
+            setPrerequisites(res.prerequisites)
+          }
+
+          if (res.inScope === false) {
+            const refusalMsg: ChatMessage = {
+              id: `msg-ast-${Date.now()}`,
+              role: 'assistant',
+              content: res.message,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }
+            setMessages((prev) => [...prev, refusalMsg])
+            return
+          }
+
+          if (res.proposal) {
+            setProposal(res.proposal)
+          }
+          if (res.archimateModel && res.diagramSvg) {
+            setArchimateModel(res.archimateModel)
+            setDiagramSvg(res.diagramSvg)
+            setValidation(res.validation || null)
+          }
+          const assistantMsg: ChatMessage = {
+            id: `msg-ast-${Date.now()}`,
+            role: 'assistant',
+            content: res.message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, assistantMsg])
         }
-        if (res.proposal) {
-          setProposal(res.proposal)
-        }
-        if (res.archimateModel && res.diagramSvg) {
-          setArchimateModel(res.archimateModel)
-          setDiagramSvg(res.diagramSvg)
-          setValidation(res.validation || null)
-        }
-        const assistantMsg: ChatMessage = {
-          id: `msg-ast-${Date.now()}`,
-          role: 'assistant',
-          content: res.message,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
-        setMessages((prev) => [...prev, assistantMsg])
       } else {
-        // Step 4: Iterative Refinement — updates both proposal AND diagram immediately
-        const res = await refineArchitecture(proposal, text)
+        // Proposta já existente: Loop de refinamento
+        const res = await refineArchitecture(proposal, text, persona)
         if (res.proposal) {
           setProposal(res.proposal)
           if (res.archimateModel && res.diagramSvg) {
@@ -128,7 +267,21 @@ export const App: React.FC = () => {
       setMessages((prev) => [...prev, errMsg])
     } finally {
       setIsLoading(false)
+      refreshFinOps()
     }
+  }
+
+  const handleRequestAdjustments = () => {
+    setActiveMode('brainstorm')
+    const personaLabel =
+      persona === 'arquiteto' ? 'Arquiteto de Software BV' : 'Engenheiro de Software BV'
+    const adjustmentPrompt: ChatMessage = {
+      id: `msg-adj-${Date.now()}`,
+      role: 'assistant',
+      content: `🔄 **Modo de Ajuste Ativado**\n\nComo ${personaLabel}, estou pronto para refinar a arquitetura. O que você gostaria de modificar? (Ex: alterar tecnologias, adicionar filas PubSub, mudar o banco para PostgreSQL ou adicionar processamento Batch).`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+    setMessages((prev) => [...prev, adjustmentPrompt])
   }
 
   const handleApproveAndGenerate = async () => {
@@ -155,87 +308,73 @@ export const App: React.FC = () => {
       alert(`Erro ao gerar arquitetura ArchiMate: ${err.message}`)
     } finally {
       setIsLoading(false)
+      refreshFinOps()
     }
   }
 
-  // Component edits
-  const handleOpenEditComponent = (comp: ComponentItem) => {
-    setEditingComponent(comp)
-    setIsNewComponent(false)
-    setShowComponentModal(true)
-  }
-
+  // Manipuladores de componentes
   const handleOpenAddComponent = () => {
-    const sigla = proposal?.prerequisites?.sigla?.toLowerCase() || 'proj'
-    const newComp: ComponentItem = {
-      id: `COMP-${Date.now().toString().slice(-3)}`,
-      name: `sboot-${sigla}-base-atom-novo-dominio`,
-      category: 'Backend',
-      responsibility: 'Responsabilidade do novo componente',
-      suggestedTechnology: 'Spring Boot Java',
-      justification: 'Necessidade arquitetural adicionada pelo usuário',
-      layer: 'Application',
-      archimateType: 'ApplicationComponent',
-    }
-    setEditingComponent(newComp)
+    setEditingComponent(null)
     setIsNewComponent(true)
     setShowComponentModal(true)
   }
 
-  const handleSaveComponent = (updatedComp: ComponentItem) => {
-    if (!proposal) return
-    let updatedList: ComponentItem[]
-    if (isNewComponent) {
-      updatedList = [...proposal.components, updatedComp]
-    } else {
-      updatedList = proposal.components.map((c) => (c.id === updatedComp.id ? updatedComp : c))
-    }
-
-    const updatedProposal: ArchitectureProposal = {
-      ...proposal,
-      components: updatedList,
-      version: proposal.version + 1,
-      status: 'modified',
-    }
-    setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+  const handleOpenEditComponent = (component: ComponentItem) => {
+    setEditingComponent(component)
+    setIsNewComponent(false)
+    setShowComponentModal(true)
   }
 
-  const handleDeleteComponent = (compId: string) => {
+  const handleDeleteComponent = (componentId: string) => {
     if (!proposal) return
-    if (!confirm(`Remover componente ${compId}? As integrações associadas também serão removidas.`))
-      return
-
-    const updatedComponents = proposal.components.filter((c) => c.id !== compId)
+    const updatedComponents = proposal.components.filter((c) => c.id !== componentId)
     const updatedIntegrations = proposal.integrations.filter(
-      (i) => i.sourceComponentId !== compId && i.targetComponentId !== compId
+      (i) => i.sourceComponentId !== componentId && i.targetComponentId !== componentId
     )
-
     const updatedProposal: ArchitectureProposal = {
       ...proposal,
       components: updatedComponents,
       integrations: updatedIntegrations,
-      version: proposal.version + 1,
       status: 'modified',
+      version: proposal.version + 1,
     }
     setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+    refreshDiagramFromProposal(updatedProposal)
   }
 
-  // Integrations edits
-  const handleSaveIntegrations = (updatedIntegrations: IntegrationItem[]) => {
+  const handleSaveComponent = (savedComp: ComponentItem) => {
+    if (!proposal) return
+    let updatedComponents: ComponentItem[]
+    if (isNewComponent) {
+      updatedComponents = [...proposal.components, savedComp]
+    } else {
+      updatedComponents = proposal.components.map((c) => (c.id === savedComp.id ? savedComp : c))
+    }
+    const updatedProposal: ArchitectureProposal = {
+      ...proposal,
+      components: updatedComponents,
+      status: 'modified',
+      version: proposal.version + 1,
+    }
+    setProposal(updatedProposal)
+    setShowComponentModal(false)
+    refreshDiagramFromProposal(updatedProposal)
+  }
+
+  const handleSaveIntegrations = (newIntegrations: IntegrationItem[]) => {
     if (!proposal) return
     const updatedProposal: ArchitectureProposal = {
       ...proposal,
-      integrations: updatedIntegrations,
-      version: proposal.version + 1,
+      integrations: newIntegrations,
       status: 'modified',
+      version: proposal.version + 1,
     }
     setProposal(updatedProposal)
-    void refreshDiagramFromProposal(updatedProposal)
+    setShowIntegrationModal(false)
+    refreshDiagramFromProposal(updatedProposal)
   }
 
-  // Exports
+  // Manipuladores de exportação
   const handleDownloadSvg = () => {
     if (!diagramSvg) return
     const blob = new Blob([diagramSvg], { type: 'image/svg+xml;charset=utf-8' })
@@ -257,7 +396,6 @@ export const App: React.FC = () => {
 
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      // High-res multiplier (2x for retina sharpness)
       const scale = 2
       canvas.width = (img.width || 1200) * scale
       canvas.height = (img.height || 800) * scale
@@ -308,25 +446,35 @@ export const App: React.FC = () => {
     setArchimateModel(null)
     setDiagramSvg(null)
     setValidation(null)
+    setIsReadyForModeling(false)
   }
 
   return (
     <div className="app-layout">
       <Header
         systemInfo={systemInfo}
+        finOpsSummary={finOpsSummary}
         onOpenConfig={() => setShowConfigModal(true)}
+        onOpenFinOps={() => setShowFinOpsModal(true)}
         onReset={handleReset}
       />
 
       <main className="main-container">
-        {/* Top Grid: Area A (Chat) + Area B (Proposal Table) */}
+        {/* Grid Superior: Área A (Chat) + Área B (Tabela de Proposta) */}
         <div className="top-grid">
           <div className="grid-col-left">
             <AreaA_ChatDescription
               messages={messages}
               isLoading={isLoading}
               hasProposal={Boolean(proposal)}
+              persona={persona}
+              onPersonaChange={setPersona}
+              activeMode={activeMode}
+              onModeChange={setActiveMode}
               onSendMessage={handleSendMessage}
+              onTriggerModeling={() => handleTriggerModeling()}
+              isReadyForModeling={isReadyForModeling}
+              prerequisites={prerequisites}
             />
           </div>
           <div className="grid-col-right">
@@ -340,7 +488,7 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Middle: Area C (Diagram Viewer) */}
+        {/* Centro: Área C (Visualizador de Diagrama) */}
         <div className="diagram-section">
           <AreaC_DiagramViewer
             svgMarkup={diagramSvg}
@@ -348,7 +496,7 @@ export const App: React.FC = () => {
           />
         </div>
 
-        {/* Bottom: Area D (Export & Action Toolbar) */}
+        {/* Rodapé: Área D (Barra de Ações e Exportação) */}
         <div className="export-section">
           <AreaD_ExportToolbar
             proposal={proposal}
@@ -357,6 +505,7 @@ export const App: React.FC = () => {
             validation={validation}
             isProcessing={isLoading}
             onApproveAndGenerate={handleApproveAndGenerate}
+            onRequestAdjustments={handleRequestAdjustments}
             onDownloadSvg={handleDownloadSvg}
             onDownloadPng={handleDownloadPng}
             onDownloadJson={handleDownloadJson}
@@ -366,7 +515,7 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Modals */}
+      {/* Janelas Modais */}
       {showComponentModal && (
         <EditComponentModal
           component={editingComponent}
@@ -391,6 +540,13 @@ export const App: React.FC = () => {
           onClose={() => setShowConfigModal(false)}
         />
       )}
+
+      <FinOpsModal
+        summary={finOpsSummary}
+        isOpen={showFinOpsModal}
+        onClose={() => setShowFinOpsModal(false)}
+        onReset={handleResetFinOps}
+      />
     </div>
   )
 }

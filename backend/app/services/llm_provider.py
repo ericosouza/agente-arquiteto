@@ -180,7 +180,7 @@ def infer_contextual_domains(
     - 'storage': for GCS (e.g. 'arquivos-esg' or 'relatorio-esg')
     - 'messaging': for Pub/Sub (e.g. 'eventos-esg' or atom domain)
     """
-    # Remove labeled prerequisite lines (e.g. "Sigla: SESG", "ARQCOR: ARQ-1", "Feature: feat") from raw text
+    # Remove linhas rotuladas de pré-requisitos (ex: "Sigla: SESG", "ARQCOR: ARQ-1", "Feature: feat") do texto bruto
     cleaned_lines = []
     for line in (description or "").splitlines():
         if re.match(r"^\s*(?:qual\s+)?(?:sigla|arqcor|iniciativa)\b\s*[:=\-]", line, re.IGNORECASE):
@@ -188,7 +188,7 @@ def infer_contextual_domains(
         m_feat_line = re.match(r"^\s*(?:qual\s+)?(?:feature|funcionalidade)\b\s*[:=\-]\s*(.+)$", line, re.IGNORECASE)
         if m_feat_line:
             f_val = m_feat_line.group(1).strip()
-            # Keep feature value only if it is not a generic placeholder like 'feat' or 'FEAT-01'
+            # Mantém o valor da feature apenas se não for um placeholder genérico como 'feat' ou 'FEAT-01'
             if not re.match(r"^(?:feat(?:ure)?[\s\-_\d]*|f\d+|us\d+)$", f_val, re.IGNORECASE):
                 cleaned_lines.append(f_val)
             continue
@@ -203,14 +203,14 @@ def infer_contextual_domains(
     narrative = strip_accents(" ".join(cleaned_lines).lower())
     sigla_low = (sigla or "").lower().strip()
 
-    # 1. Detect channel keyword (e.g. "portal", "painel", "dashboard")
+    # 1. Detecta palavra-chave de canal (ex: "portal", "painel", "dashboard")
     channel_word: Optional[str] = None
     for cw in CHANNEL_KEYWORDS:
         if re.search(rf"\b{cw}\b", narrative):
             channel_word = cw
             break
 
-    # 2. Detect explicit "sistema <X>" or "portal <X>" or core subject
+    # 2. Detecta termos explícitos como "sistema <X>" ou "portal <X>" ou assunto principal
     explicit_sistema_subject: Optional[str] = None
     m_sis = re.search(
         r"\bsistema\s+(?:de\s+|do\s+|da\s+|para\s+)?([a-z0-9]+(?:\s+[a-z0-9]+){0,2})",
@@ -224,7 +224,7 @@ def infer_contextual_domains(
         if cand_tokens:
             explicit_sistema_subject = "-".join(cand_tokens[:2])
 
-    # Extract general meaningful business tokens from narrative
+    # Extrai termos de negócio relevantes a partir da narrativa
     all_tokens = re.findall(r"[a-z0-9]+", narrative)
     domain_tokens: List[str] = []
     for t in all_tokens:
@@ -239,7 +239,7 @@ def infer_contextual_domains(
         ):
             domain_tokens.append(t)
 
-    # Determine primary business subject (1 to 3 words)
+    # Determina o assunto principal de negócio (1 a 3 termos)
     if explicit_sistema_subject:
         core_subject = explicit_sistema_subject
     elif domain_tokens:
@@ -250,7 +250,7 @@ def infer_contextual_domains(
     core_words = core_subject.split("-")
     short_subject = "-".join(core_words[:2])
 
-    # Build atom_domain (Core/Atomic service domain — never uses 'portal')
+    # Constrói atom_domain (domínio do serviço Atômico/Core — nunca utiliza 'portal')
     if explicit_sistema_subject:
         atom_domain = f"sistema-{short_subject}" if len(core_words) <= 2 else "-".join(core_words[:3])
     elif len(core_words) == 1:
@@ -258,13 +258,13 @@ def infer_contextual_domains(
     else:
         atom_domain = "-".join(core_words[:3])
 
-    # Build channel_domain (Frontend & BFF domain — uses 'portal-<subject>' if channel_word detected)
+    # Constrói channel_domain (domínio de Frontend e BFF — utiliza 'portal-<assunto>' se detectada palavra de canal)
     if channel_word:
         channel_domain = f"{channel_word}-{short_subject}"
     else:
         channel_domain = atom_domain if not atom_domain.startswith("sistema-") else f"portal-{short_subject}"
 
-    # Contextual secondary domains
+    # Domínios secundários contextuais
     has_relatorio = "relatorio" in narrative or "relatorios" in narrative
     batch_domain = f"relatorio-{core_words[0]}" if has_relatorio else atom_domain
     storage_domain = f"arquivos-{core_words[0]}" if not has_relatorio else f"relatorio-{core_words[0]}"
@@ -440,7 +440,7 @@ class PrerequisiteExtractor:
             if ln.strip()
         ]
 
-        # If user answered in 4 lines corresponding to the 4 questions
+        # Se o usuário respondeu em 4 linhas correspondentes às 4 perguntas
         if len(lines) == 4 and not any(":" in ln for ln in lines):
             if not info.iniciativa:
                 info.iniciativa = lines[0].strip(" .,;")
@@ -454,7 +454,7 @@ class PrerequisiteExtractor:
                 info.arqcor = lines[3].strip(" .,;")
             return
 
-        # If user answered in 4 comma/semicolon-separated parts on a single line (when replying in follow-up)
+        # Se o usuário respondeu em 4 partes separadas por vírgula/ponto-e-vírgula em uma única linha (resposta de follow-up)
         if len(all_user_messages) > 1 and len(lines) == 1 and not (":" in lines[0]):
             parts = [p.strip() for p in re.split(r"[,;]", lines[0]) if p.strip()]
             missing = info.missing_fields()
@@ -474,8 +474,8 @@ class PrerequisiteExtractor:
                 cls._assign_by_question(info, missing[0], lines[0])
                 return
 
-        # If follow-up message has some labeled fields and only 1 or 2 are left unlabeled,
-        # check if feature was already described in the very first message
+        # Se a mensagem de acompanhamento tiver campos rotulados e restarem 1 ou 2 sem rótulo,
+        # verifica se a feature já havia sido descrita na primeira mensagem
         if len(all_user_messages) > 1 and not info.feature and (info.iniciativa and info.sigla and info.arqcor):
             first_msg = all_user_messages[0].strip()
             if len(first_msg) >= 10:
@@ -501,7 +501,7 @@ class PrerequisiteExtractor:
     @staticmethod
     def _clean_value(raw: str, stop_keys: List[str]) -> str:
         val = raw.strip()
-        # Cut off if another key starts on the same line (e.g. "Iniciativa: ESG, Sigla: SESG")
+        # Interrompe se outra chave começar na mesma linha (ex: "Iniciativa: ESG, Sigla: SESG")
         pattern = r",?\s*\b(?:" + "|".join(stop_keys) + r")\b\s*[:=\-]"
         m = re.search(pattern, val, re.IGNORECASE)
         if m:
@@ -522,7 +522,7 @@ class PrerequisiteExtractor:
             collected.append(f"• ARQCOR: {info.arqcor}")
 
         lines = [
-            "Antes de continuar e criar o desenho de arquitetura, preciso que você informe os 4 pré-requisitos obrigatórios:"
+            "Para prosseguirmos com a modelagem no Archi, confirme os pré-requisitos corporativos (Sigla, Feature e ARQCOR):"
         ]
         for q in missing:
             lines.append(f"- {q}")
@@ -557,7 +557,7 @@ class BuiltinExpertEngine:
         if prerequisites:
             combined_text += f" {(prerequisites.iniciativa or '').lower()} {(prerequisites.feature or '').lower()}"
 
-        # Extract or fallback prerequisites
+        # Extrai os pré-requisitos ou aplica valores de fallback
         sigla = (prerequisites.sigla if prerequisites and prerequisites.sigla else None)
         if not sigla:
             # Try to find a 4-letter sigla in description or default to 'base'
@@ -569,13 +569,13 @@ class BuiltinExpertEngine:
         feature_text = (prerequisites.feature if prerequisites and prerequisites.feature else description)
         arqcor = (prerequisites.arqcor if prerequisites and prerequisites.arqcor else "ARQCOR-PADRAO")
 
-        # Determine module (default "base")
+        # Determina o módulo (padrão "base")
         modulo = "base"
         m_mod = re.search(r"\bm[oó]dulo\s*[:=\-]?\s*([a-zA-Z0-9_-]+)", combined_text)
         if m_mod and m_mod.group(1).lower() not in {"de", "do", "da", "para", "com"}:
             modulo = strip_accents(m_mod.group(1).lower())
 
-        # Determine contextual business domains per architectural role
+        # Determina os domínios de negócio contextuais por papel arquitetural
         domains = infer_contextual_domains(description, prerequisites, sigla=sigla)
         channel_dom = domains["channel"]
         atom_dom = domains["atom"]
@@ -585,7 +585,7 @@ class BuiltinExpertEngine:
         msg_dom = domains["messaging"]
         dominio = atom_dom
 
-        # Capability / Technology detection
+        # Detecção de capacidades e tecnologias requeridas
         wants_streamlit = any(w in combined_text for w in ["streamlit", "baixa complexidade", "dashboard simples", "prototipo", "protótipo"])
         wants_no_frontend = any(w in combined_text for w in ["sem front", "sem interface", "apenas backend", "somente api", "somente batch"])
         wants_python_be = any(w in combined_text for w in ["python", "pyweb", "fastapi", "flask", "django"])
@@ -602,7 +602,7 @@ class BuiltinExpertEngine:
         components: List[Dict[str, Any]] = []
         integrations: List[Dict[str, Any]] = []
 
-        # 1. Frontend (in Channel Layer) + BFF (in Application Layer)
+        # 1. Frontend (na camada Channel Layer) + BFF (na camada Application Layer)
         bff_id: Optional[str] = None
         if not wants_no_frontend:
             fe_sigla = "streamlit" if wants_streamlit else "ng"
@@ -622,7 +622,7 @@ class BuiltinExpertEngine:
                 "archimateType": fe_info["archimateType"],
             })
 
-            # BFF is mandatory to serve the Frontend ("bff - backend for frontend, que é o unico componente que serve o front")
+            # BFF é obrigatório para servir o Frontend ("bff - backend for frontend, que é o único componente que serve o front")
             bff_id = "COMP-BFF"
             bff_name = build_component_name(backend_tech_sigla, sigla, modulo, "bff", channel_dom)
             components.append({
@@ -709,7 +709,7 @@ class BuiltinExpertEngine:
                 "purpose": "Consulta e persistência de estado no componente atômico.",
             })
 
-        # 4. Database (Always MySQL as standard, connected exclusively to the atomic component `atom`)
+        # 4. Banco de Dados (Sempre MySQL como padrão, conectado exclusivamente ao componente atômico `atom`)
         db_tech = "MySQL"
         db_id = "COMP-DB"
         components.append({
@@ -909,6 +909,16 @@ class BuiltinExpertEngine:
             "arqcor": arqcor,
         }
 
+        from app.services.cost_tracker import CostTracker
+        CostTracker.record_span(
+            name="builtin_proposal",
+            model="builtin",
+            prompt_tokens=max(len(description) // 4, 60),
+            completion_tokens=420,
+            latency_ms=15.0,
+            persona="arquiteto",
+        )
+
         return {
             "id": f"PROP-{sigla.upper()}-{abs(hash(description)) % 10000}",
             "title": f"[{sigla.upper()}] {iniciativa} — {feature_text[:60]}",
@@ -966,7 +976,7 @@ class BuiltinExpertEngine:
 
         sigla, modulo, dominio = cls._extract_existing_metadata(proposal_dict)
 
-        # Check if user requested to change sigla, modulo, or dominio
+        # Verifica se o usuário solicitou alteração de sigla, módulo ou domínio
         m_sigla = re.search(r"\bsigla\s+(?:para\s+|por\s+|:?\s*)([a-zA-Z]{4})\b", feedback, re.IGNORECASE)
         if m_sigla and m_sigla.group(1).lower() not in {"para", "como", "nova", "novo"}:
             sigla = m_sigla.group(1).lower()
@@ -981,7 +991,7 @@ class BuiltinExpertEngine:
         if m_dom:
             dominio = slugify_domain(m_dom.group(1), fallback=dominio, max_words=3)
 
-        # Determine current backend tech (sboot or pyweb)
+        # Determina a tecnologia atual de backend (sboot ou pyweb)
         current_be_sigla = "sboot"
         for c in components:
             if c["name"].startswith("pyweb-"):
@@ -994,7 +1004,7 @@ class BuiltinExpertEngine:
 
         changes_made = False
 
-        # 1. Handle Component Removal
+        # 1. Tratamento de Remoção de Componentes
         if is_remove:
             removed_ids = set()
             for c in list(components):
@@ -1019,8 +1029,8 @@ class BuiltinExpertEngine:
                     if i["sourceComponentId"] not in removed_ids and i["targetComponentId"] not in removed_ids
                 ]
 
-        # 2. Handle Technology / Component Replacement or Addition
-        # 2a. Frontend changes (ng <-> streamlit)
+        # 2. Tratamento de Substituição ou Adição de Tecnologias/Componentes
+        # 2a. Alterações no Frontend (ng <-> streamlit)
         if "streamlit" in fb_norm and not is_remove:
             fe_comp = next((c for c in components if c["category"] == "Frontend"), None)
             info = TECH_CATALOG["streamlit"]
@@ -1103,7 +1113,7 @@ class BuiltinExpertEngine:
                     })
             changes_made = True
 
-        # 2b. Backend stack swap or addition (pyweb <-> sboot)
+        # 2b. Substituição ou adição de stack de backend (pyweb <-> sboot)
         wants_pyweb = any(w in fb_norm for w in ["python", "pyweb", "fastapi", "flask"])
         wants_sboot = any(w in fb_norm for w in ["sboot", "spring boot", "java"]) and "sbatch" not in fb_norm and "spring batch" not in fb_norm
 
@@ -1112,7 +1122,7 @@ class BuiltinExpertEngine:
             current_be_sigla = target_be_sigla
             be_info = TECH_CATALOG[target_be_sigla]
 
-            # If replacing existing backend technology (or if not explicitly adding a new component)
+            # Se estiver substituindo tecnologia existente de backend (ou se não estiver adicionando explicitamente novo componente)
             if is_replace or not is_add:
                 for c in components:
                     if c["category"] in ("Backend", "BFF") and (c["name"].startswith("sboot-") or c["name"].startswith("pyweb-") or c["category"] in ("Backend", "BFF")):
@@ -1125,7 +1135,7 @@ class BuiltinExpertEngine:
                         c["justification"] = f"Atualizado para {be_info['name']} conforme solicitação do usuário."
                         changes_made = True
 
-        # 2c. Specific backend role addition (orch, bff, atom)
+        # 2c. Adição de papel específico de backend (orch, bff, atom)
         if not is_remove:
             if any(w in fb_norm for w in ["orch", "orquestrador", "orquestracao", "integracao externa", "outros sistemas"]):
                 has_orch = any("-orch-" in c["name"] for c in components)
@@ -1483,8 +1493,8 @@ class BuiltinExpertEngine:
                     c["name"] = build_component_name(tech_p, sigla, modulo, tipo_p, dom_p)
             changes_made = True
 
-        # 4. Fallback: If user requested an addition/modification with a domain concept not matched above,
-        # add a new atomic/orchestrator service or component with that domain so the diagram always reflects the change
+        # 4. Fallback: Se o usuário solicitou adição/modificação de um conceito de domínio não mapeado acima,
+        # adiciona um novo serviço ou componente atômico/orquestrador com esse domínio para o diagrama sempre refletir a mudança
         if not changes_made:
             custom_dom = cls._extract_custom_domain(feedback, fallback="")
             if custom_dom and custom_dom != dominio:
@@ -1536,6 +1546,17 @@ class BuiltinExpertEngine:
         proposal_dict["decisions"] = decisions
         proposal_dict["version"] = proposal_dict.get("version", 1) + 1
         proposal_dict["status"] = "modified"
+
+        from app.services.cost_tracker import CostTracker
+        CostTracker.record_span(
+            name="builtin_refine",
+            model="builtin",
+            prompt_tokens=max(len(feedback) // 4, 30),
+            completion_tokens=320,
+            latency_ms=10.0,
+            persona="arquiteto",
+        )
+
         return proposal_dict
 
     @staticmethod
@@ -1585,7 +1606,7 @@ class BuiltinExpertEngine:
             "Serving", "Access", "Flow", "Triggering", "Association",
         }
 
-        # Filter out any BusinessActor / Business layer elements
+        # Filtra quaisquer elementos de BusinessActor ou da camada de Negócios (Business Layer)
         filtered_components = []
         removed_ids = set()
         for comp in raw.get("components", []):
@@ -1595,11 +1616,56 @@ class BuiltinExpertEngine:
             filtered_components.append(comp)
         raw["components"] = filtered_components
 
-        for comp in raw.get("components", []):
-            cat = comp.get("category", "")
-            name_val = comp.get("name", "").strip()
+        # Mapeamento do nome dos componentes para seus IDs para recuperar referências em integrações
+        name_to_id = {}
+        # Converte strings simples para dicionários caso o modelo retorne lista de strings
+        safe_components = []
+        for idx, comp in enumerate(raw.get("components", []), start=1):
+            if isinstance(comp, str):
+                comp = {"name": comp, "id": f"COMP-{idx}"}
+            elif not comp.get("id"):
+                comp["id"] = f"COMP-{idx}"
+            safe_components.append(comp)
+        raw["components"] = safe_components
 
-            # Force Frontend into Channel Layer
+        for idx, comp in enumerate(raw.get("components", []), start=1):
+            
+            name_val = comp.get("name", "").strip()
+            cat = comp.get("category", "")
+            if not cat:
+                if name_val.startswith("ng-") or name_val.startswith("streamlit-"):
+                    cat = "Frontend"
+                elif "-bff-" in name_val:
+                    cat = "BFF"
+                elif "mysql" in name_val.lower() or "db" in name_val.lower() or "database" in name_val.lower():
+                    cat = "Database"
+                elif "pubsub" in name_val.lower() or "kafka" in name_val.lower():
+                    cat = "Messaging"
+                elif "gcs" in name_val.lower() or "storage" in name_val.lower():
+                    cat = "Infrastructure"
+                else:
+                    cat = "Backend"
+                comp["category"] = cat
+
+            if not comp.get("suggestedTechnology"):
+                if cat == "Frontend":
+                    comp["suggestedTechnology"] = "Frontend Angular 20"
+                elif cat == "Database":
+                    comp["suggestedTechnology"] = "MySQL"
+                elif cat == "Messaging":
+                    comp["suggestedTechnology"] = "Google Cloud Pub/Sub (Tópico e Subscription)"
+                elif cat == "Infrastructure":
+                    comp["suggestedTechnology"] = "Google Cloud Storage"
+                else:
+                    comp["suggestedTechnology"] = "Spring Boot Java"
+
+            if not comp.get("responsibility"):
+                comp["responsibility"] = f"Componente {cat} responsável pelas operações de {name_val or 'negócio'}."
+
+            if not comp.get("justification"):
+                comp["justification"] = f"Adoção de {comp.get('suggestedTechnology')} para atender aos requisitos arquiteturais corporativos do Banco BV."
+
+            # Garante que o Frontend pertença à camada Channel Layer
             if cat == "Frontend" or name_val.startswith("ng-") or name_val.startswith("streamlit-"):
                 comp["category"] = "Frontend"
                 comp["layer"] = "Channel"
@@ -1610,7 +1676,7 @@ class BuiltinExpertEngine:
             if comp.get("archimateType") not in valid_elem_types:
                 comp["archimateType"] = "SystemSoftware" if comp["layer"] == "Technology" else "ApplicationComponent"
 
-            # Enforce MySQL for Database unless user explicitly asked for another DB in refinement
+            # Garante MySQL para o Banco de Dados, a menos que o usuário solicite explicitamente outro banco no refinamento
             if cat == "Database":
                 comp["suggestedTechnology"] = "MySQL"
                 comp["layer"] = "Technology"
@@ -1619,7 +1685,7 @@ class BuiltinExpertEngine:
 
             parts = name_val.split("-")
             is_valid_catalog_name = len(parts) >= 4 and parts[0] in TECH_CATALOG
-            # Check if LLM used a bad generic domain like 'feat' or 'feature' or 'portal' on an atomic service
+            # Verifica se o LLM utilizou um domínio genérico inadequado como 'feat', 'feature' ou 'portal' em um serviço atômico
             if is_valid_catalog_name:
                 tech_p = parts[0]
                 tipo_p = parts[3] if (tech_p in ("sboot", "pyweb") and len(parts) >= 5) else None
@@ -1663,15 +1729,73 @@ class BuiltinExpertEngine:
                     role_dom = domains["channel"] if (inferred_tech in ("ng", "streamlit") or tipo == "bff") else domains["atom"]
                     comp["name"] = build_component_name(inferred_tech, sigla, modulo, tipo, role_dom)
 
-        raw["integrations"] = [
-            rel for rel in raw.get("integrations", [])
-            if rel.get("sourceComponentId") not in removed_ids and rel.get("targetComponentId") not in removed_ids
-        ]
-        for rel in raw.get("integrations", []):
+        # Normaliza IDs e mapeia nomes de componentes para seus respectivos IDs caso a LLM tenha usado nomes
+        comp_lookup = {}
+        for c in raw.get("components", []):
+            comp_lookup[c["id"]] = c["id"]
+            if c.get("name"):
+                comp_lookup[c["name"]] = c["id"]
+                comp_lookup[c["name"].lower()] = c["id"]
+
+        normalized_integrations = []
+        for idx, rel in enumerate(raw.get("integrations", []), start=1):
+            if isinstance(rel, str):
+                rel = {"purpose": rel, "id": f"INT-{idx}"}
+            elif not rel.get("id"):
+                rel["id"] = f"INT-{idx}"
+            
+            s_id = rel.get("sourceComponentId") or rel.get("source") or rel.get("source_id") or rel.get("from")
+            t_id = rel.get("targetComponentId") or rel.get("target") or rel.get("target_id") or rel.get("to")
+            
+            s_mapped = comp_lookup.get(s_id, comp_lookup.get(str(s_id).lower(), s_id))
+            t_mapped = comp_lookup.get(t_id, comp_lookup.get(str(t_id).lower(), t_id))
+            
+            rel["sourceComponentId"] = str(s_mapped or f"COMP-1")
+            rel["targetComponentId"] = str(t_mapped or f"COMP-2")
+            
+            if rel.get("sourceComponentId") in removed_ids or rel.get("targetComponentId") in removed_ids:
+                continue
+
             if rel.get("relationshipType") not in valid_rel_types:
                 rel["relationshipType"] = "Serving"
             if rel.get("communicationPattern") not in ("Synchronous", "Asynchronous"):
                 rel["communicationPattern"] = "Synchronous"
+            if not rel.get("protocol"):
+                rel["protocol"] = "HTTPS / REST"
+            if not rel.get("purpose"):
+                rel["purpose"] = f"Integração entre {rel['sourceComponentId']} e {rel['targetComponentId']}."
+            normalized_integrations.append(rel)
+        raw["integrations"] = normalized_integrations
+
+        # Normaliza decisões e requisitos não-funcionais caso a LLM use campos alternativos
+        normalized_decisions = []
+        for idx, d in enumerate(raw.get("decisions", []), start=1):
+            if isinstance(d, str):
+                dec_text = d
+                rat_text = "Aderência às diretrizes corporativas do Banco BV."
+                stat = "Recomendado"
+            else:
+                dec_text = d.get("decision") or d.get("topic") or d.get("title") or f"Decisão Arquitetural {idx}"
+                rat_text = d.get("rationale") or d.get("justification") or d.get("reason") or "Aderência às diretrizes corporativas do Banco BV."
+                stat = d.get("status") or "Recomendado"
+            normalized_decisions.append({"decision": dec_text, "rationale": rat_text, "status": stat})
+        raw["decisions"] = normalized_decisions or [
+            {"decision": "Arquitetura Padronizada BV", "rationale": "Aderência ao padrão corporativo ArchiMate e catálogo técnico BV.", "status": "Recomendado"}
+        ]
+
+        normalized_nfrs = []
+        for idx, n in enumerate(raw.get("nonFunctionalRequirements", []), start=1):
+            if isinstance(n, str):
+                cat_text = "Geral"
+                desc_text = n
+            else:
+                cat_text = n.get("category") or "Segurança"
+                desc_text = n.get("description") or n.get("detail") or "Conformidade com os padrões de resiliência e segurança BV."
+            normalized_nfrs.append({"category": cat_text, "description": desc_text})
+        raw["nonFunctionalRequirements"] = normalized_nfrs or [
+            {"category": "Segurança", "description": "Autenticação via OAuth2 e isolamento de banco de dados restrito ao componente atômico."},
+            {"category": "Observabilidade", "description": "Tracing distribuído OpenTelemetry e métricas FinOps por requisição."}
+        ]
 
         return raw
 
@@ -1716,20 +1840,21 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]] = None,
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
         provider = settings.detect_active_provider()
         logger.info(f"Active LLM provider: {provider}")
 
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
-                raw = await cls._call_gemini_for_proposal(description, constraints, prerequisites)
+                raw = await cls._call_gemini_for_proposal(description, constraints, prerequisites, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prerequisites, description=description)
             except Exception as e:
                 logger.warning(f"Gemini API call failed: {e}. Falling back to Builtin Expert Engine.")
 
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
-                raw = await cls._call_openai_for_proposal(description, constraints, prerequisites)
+                raw = await cls._call_openai_for_proposal(description, constraints, prerequisites, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prerequisites, description=description)
             except Exception as e:
                 logger.warning(f"OpenAI API call failed: {e}. Falling back to Builtin Expert Engine.")
@@ -1744,21 +1869,21 @@ class LLMService:
         return BuiltinExpertEngine.analyze_requirement(description, constraints, prerequisites)
 
     @classmethod
-    async def refine_proposal(cls, proposal_dict: Dict[str, Any], feedback: str) -> Dict[str, Any]:
+    async def refine_proposal(cls, proposal_dict: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
         provider = settings.detect_active_provider()
         prereq_dict = proposal_dict.get("prerequisites")
         prereq = PrerequisitesInfo(**prereq_dict) if isinstance(prereq_dict, dict) else None
 
         if provider == "gemini" and settings.GEMINI_API_KEY:
             try:
-                raw = await cls._call_gemini_for_refinement(proposal_dict, feedback)
+                raw = await cls._call_gemini_for_refinement(proposal_dict, feedback, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prereq)
             except Exception as e:
                 logger.warning(f"Gemini refinement failed: {e}. Falling back to Builtin Expert Engine.")
 
         elif provider == "openai" and settings.OPENAI_API_KEY:
             try:
-                raw = await cls._call_openai_for_refinement(proposal_dict, feedback)
+                raw = await cls._call_openai_for_refinement(proposal_dict, feedback, persona)
                 return BuiltinExpertEngine.normalize_proposal_dict(raw, prereq)
             except Exception as e:
                 logger.warning(f"OpenAI refinement failed: {e}. Falling back to Builtin Expert Engine.")
@@ -1778,17 +1903,35 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]],
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        from app.models.persona import PersonaType, get_persona_system_prompt
+        from app.services.architecture_rag import ArchitectureRAGService
+
+        persona_type = persona if isinstance(persona, PersonaType) else PersonaType.ARQUITETO
+        persona_prompt = get_persona_system_prompt(persona_type)
+        rag_chunks = ArchitectureRAGService.search(description, top_k=3)
+        rag_context = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
+
+        url, headers = settings.get_gemini_request_config()
         prereq_str = (
-            f"Iniciativa: {prerequisites.iniciativa}, Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
+            f"Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
             if prerequisites else "Extraia do texto"
         )
         prompt = f"""
-        Você é um arquiteto de soluções sênior. Responda ESTRITAMENTE em JSON puro.
+        {persona_prompt}
+
+        DIRETRIZES TÉCNICAS E RAG DO BANCO BV:
+        {rag_context}
+
         {cls.NAMING_RULES_PROMPT}
 
-        Pré-requisitos informados: {prereq_str}
+        DIRETRIZ DE INOVAÇÃO ARQUITETURAL:
+        Não utilize sempre o mesmo padrão ou template repetitivo.
+        Analise a necessidade específica e desenhe uma arquitetura sob medida para esta demanda,
+        mapeando o pipeline de dados completo (Canal -> BFF/Orquestração -> Serviços Atômicos -> Storage/Mensageria).
+
+        Pré-requisitos corporativos: {prereq_str}
         Descrição da necessidade: "{description}"
         Restrições: {constraints or []}
 
@@ -1796,19 +1939,32 @@ class LLMService:
         id, title, summary, architecturalStyle, styleJustification, components, integrations, decisions, nonFunctionalRequirements, status ("proposed"), version (1).
         """
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
+        import time
+        from app.services.cost_tracker import CostTracker
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="archimate_proposal",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", len(prompt) // 4),
+                completion_tokens=usage.get("candidatesTokenCount", 450),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(cls._clean_json(raw_text))
 
     @classmethod
-    async def _call_gemini_for_refinement(cls, proposal: Dict[str, Any], feedback: str) -> Dict[str, Any]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+    async def _call_gemini_for_refinement(cls, proposal: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
+        url, headers = settings.get_gemini_request_config()
         prompt = f"""
         {cls.NAMING_RULES_PROMPT}
 
@@ -1822,13 +1978,26 @@ class LLMService:
         Atualize a versão (+1) e mude o status para 'modified'. Responda APENAS o JSON válido.
         """
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
+        import time
+        from app.services.cost_tracker import CostTracker
+        t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            latency_ms = (time.perf_counter() - t0) * 1000
+            usage = data.get("usageMetadata", {})
+            CostTracker.record_span(
+                name="proposal_refine",
+                model=settings.GEMINI_MODEL,
+                prompt_tokens=usage.get("promptTokenCount", len(prompt) // 4),
+                completion_tokens=usage.get("candidatesTokenCount", 350),
+                latency_ms=latency_ms,
+                persona=getattr(persona, "value", str(persona)) if persona else None,
+            )
             raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(cls._clean_json(raw_text))
 
@@ -1838,20 +2007,40 @@ class LLMService:
         description: str,
         constraints: Optional[List[str]],
         prerequisites: Optional[PrerequisitesInfo] = None,
+        persona: Any = None,
     ) -> Dict[str, Any]:
+        from app.models.persona import PersonaType, get_persona_system_prompt
+        from app.services.architecture_rag import ArchitectureRAGService
+
+        persona_type = persona if isinstance(persona, PersonaType) else PersonaType.ARQUITETO
+        persona_prompt = get_persona_system_prompt(persona_type)
+        rag_chunks = ArchitectureRAGService.search(description, top_k=3)
+        rag_context = "\n\n".join([f"[{c['title']}]: {c['content']}" for c in rag_chunks])
+
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "Content-Type": "application/json",
         }
         prereq_str = (
-            f"Iniciativa: {prerequisites.iniciativa}, Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
+            f"Sigla: {prerequisites.sigla}, Feature: {prerequisites.feature}, ARQCOR: {prerequisites.arqcor}"
             if prerequisites else "Extraia do texto"
         )
         prompt = f"""
+        {persona_prompt}
+
+        DIRETRIZES TÉCNICAS E RAG DO BANCO BV:
+        {rag_context}
+
         {cls.NAMING_RULES_PROMPT}
-        Pré-requisitos: {prereq_str}
-        Descrição da necessidade do sistema: "{description}"
+
+        DIRETRIZ DE INOVAÇÃO ARQUITETURAL:
+        Não utilize sempre o mesmo padrão ou template repetitivo.
+        Desenhe uma arquitetura sob medida para esta demanda,
+        mapeando o pipeline de dados completo (Canal -> BFF/Orquestração -> Serviços Atômicos -> Storage/Mensageria).
+
+        Pré-requisitos corporativos: {prereq_str}
+        Descrição da necessidade: "{description}"
         Restrições: {constraints or []}
         Responda em JSON válido com campos: id, title, summary, architecturalStyle, styleJustification, components, integrations, decisions, nonFunctionalRequirements, status, version.
         """
@@ -1870,7 +2059,7 @@ class LLMService:
             return json.loads(content)
 
     @classmethod
-    async def _call_openai_for_refinement(cls, proposal: Dict[str, Any], feedback: str) -> Dict[str, Any]:
+    async def _call_openai_for_refinement(cls, proposal: Dict[str, Any], feedback: str, persona: Any = None) -> Dict[str, Any]:
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",

@@ -33,6 +33,8 @@ export type ArchiMateRelationshipType =
   | 'Triggering'
   | 'Association'
 
+export type PersonaType = 'arquiteto' | 'engenheiro'
+
 export interface ComponentItem {
   id: string
   name: string
@@ -67,10 +69,10 @@ export interface ArchitecturalDecision {
 }
 
 export interface PrerequisitesInfo {
-  iniciativa?: string | null
   sigla?: string | null
   feature?: string | null
   arqcor?: string | null
+  iniciativa?: string | null
 }
 
 export interface ArchitectureProposal {
@@ -171,6 +173,14 @@ export interface ChatMessage {
   timestamp: string
 }
 
+export interface BrainstormResponse {
+  reply: string
+  isReadyForModeling: boolean
+  prerequisites?: PrerequisitesInfo | null
+  persona: PersonaType
+  ragSourcesUsed?: string[]
+}
+
 export interface SystemInfo {
   appName: string
   appVersion: string
@@ -187,4 +197,43 @@ export interface SystemInfo {
       description?: string
     }
   >
+}
+
+
+// Tipos de FinOps e Observabilidade
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+export interface CostBreakdown {
+  usd: number
+  brl: number
+}
+
+export interface SpanMetric {
+  spanId: string
+  traceId: string
+  name: string
+  model: string
+  persona?: string | null
+  latencyMs: number
+  usage: TokenUsage
+  cost: CostBreakdown
+  timestamp: string
+  status: string
+  metadata?: Record<string, any>
+}
+
+export interface FinOpsSummary {
+  totalCostUsd: number
+  totalCostBrl: number
+  totalTokens: number
+  totalPromptTokens: number
+  totalCompletionTokens: number
+  totalCalls: number
+  exchangeRateUsdToBrl: number
+  activeProvider: string
+  spans: SpanMetric[]
 }

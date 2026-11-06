@@ -1,12 +1,12 @@
-"""ArchiMate Metamodel Validator (Etapa 8).
+"""Validador do Metamodelo ArchiMate (Etapa 8).
 
-Performs strict, automated validation against The Open Group ArchiMate 3.2 rules:
-1. Syntax and schema validation.
-2. Uniqueness of element and relationship IDs.
-3. Referential integrity (no dangling source/target references).
-4. ArchiMate semantic compatibility between element types and relationship types.
-5. Presence of required endpoints.
-6. Model consistency with architectural proposal.
+Executa validação estrita e automatizada conforme as regras da especificação The Open Group ArchiMate 3.2:
+1. Validação de sintaxe e esquema.
+2. Unicidade de IDs de elementos e relacionamentos.
+3. Integridade referencial (sem referências órfãs de origem ou destino).
+4. Compatibilidade semântica do ArchiMate entre tipos de elementos e tipos de relacionamentos.
+5. Presença dos nós de extremidade obrigatórios.
+6. Consistência do modelo com a proposta de arquitetura.
 """
 
 from typing import Set, Dict, List, Optional
@@ -22,7 +22,7 @@ from app.models.archimate import (
 from app.models.proposal import ArchitectureProposal
 
 
-# Passive structure element types (valid targets for 'Access' relations)
+# Tipos de elementos de estrutura passiva (destinos válidos para relações do tipo 'Access')
 PASSIVE_ELEMENT_TYPES: Set[ArchiMateElementType] = {
     ArchiMateElementType.DATA_OBJECT,
     ArchiMateElementType.BUSINESS_OBJECT,
@@ -31,7 +31,7 @@ PASSIVE_ELEMENT_TYPES: Set[ArchiMateElementType] = {
     ArchiMateElementType.CONTRACT,
 }
 
-# Active & behavioral structure element types (valid sources for 'Access' and 'Flow')
+# Tipos de elementos de estrutura ativa e comportamental (origens válidas para relações 'Access' e 'Flow')
 ACTIVE_OR_BEHAVIORAL_TYPES: Set[ArchiMateElementType] = {
     ArchiMateElementType.APPLICATION_COMPONENT,
     ArchiMateElementType.APPLICATION_SERVICE,
@@ -50,7 +50,7 @@ ACTIVE_OR_BEHAVIORAL_TYPES: Set[ArchiMateElementType] = {
 
 
 class ArchiMateValidator:
-    """Validates an ArchiMate model against structural and semantic rules."""
+    """Valida um modelo ArchiMate em relação a regras estruturais e semânticas."""
 
     @classmethod
     def validate_model(
@@ -65,9 +65,9 @@ class ArchiMateValidator:
         element_ids: Set[str] = set()
         element_map: Dict[str, ArchiMateElement] = {}
 
-        # 1. Validate Elements
+        # 1. Validação de Elementos
         for elem in model.elements:
-            # Check ID uniqueness
+            # Verifica a unicidade de ID
             if elem.id in element_ids:
                 errors.append(ValidationIssue(
                     severity="error",
@@ -79,7 +79,7 @@ class ArchiMateValidator:
                 element_ids.add(elem.id)
                 element_map[elem.id] = elem
 
-            # Check Name presence
+            # Verifica a presença do Nome legível
             if not elem.name or not elem.name.strip():
                 errors.append(ValidationIssue(
                     severity="error",
@@ -88,13 +88,13 @@ class ArchiMateValidator:
                     elementId=elem.id,
                 ))
 
-            # Layer / Type coherence check
+            # Verificação de coerência entre Camada e Tipo de Elemento
             cls._check_layer_coherence(elem, warnings)
 
-        # 2. Validate Relationships
+        # 2. Validação de Relacionamentos
         rel_ids: Set[str] = set()
         for rel in model.relationships:
-            # Check Relationship ID uniqueness
+            # Verifica a unicidade do ID do Relacionamento
             if rel.id in rel_ids:
                 errors.append(ValidationIssue(
                     severity="error",
@@ -105,7 +105,7 @@ class ArchiMateValidator:
             else:
                 rel_ids.add(rel.id)
 
-            # Check Source and Target presence
+            # Verifica a presença dos nós de Origem (source) e Destino (target)
             if not rel.source:
                 errors.append(ValidationIssue(
                     severity="error",
@@ -136,17 +136,17 @@ class ArchiMateValidator:
                     relationshipId=rel.id,
                 ))
 
-            # ArchiMate Semantic compatibility checks
+            # Verificações de compatibilidade semântica no ArchiMate
             if rel.source in element_map and rel.target in element_map:
                 source_elem = element_map[rel.source]
                 target_elem = element_map[rel.target]
                 cls._check_semantic_compatibility(rel, source_elem, target_elem, warnings, info)
 
-        # 3. Model Consistency with Proposal (Single Source of Truth)
+        # 3. Consistência do Modelo com a Proposta (Fonte Única da Verdade)
         if proposal is not None:
             cls._check_consistency_with_proposal(model, proposal, errors, warnings)
 
-        # Summarize
+        # Resumo final da validação
         is_valid = len(errors) == 0
         if is_valid:
             summary = (
@@ -172,7 +172,7 @@ class ArchiMateValidator:
 
     @classmethod
     def _check_layer_coherence(cls, elem: ArchiMateElement, warnings: List[ValidationIssue]) -> None:
-        """Verifies that an element's type belongs to its designated ArchiMate layer."""
+        """Verifica se o tipo do elemento pertence à camada ArchiMate designada."""
         t_str = elem.type.value
         l_str = elem.layer.value
 
@@ -207,9 +207,9 @@ class ArchiMateValidator:
         warnings: List[ValidationIssue],
         info: List[ValidationIssue]
     ) -> None:
-        """Checks semantic relationship rules according to ArchiMate 3.2 metamodel."""
+        """Verifica as regras semânticas de relacionamento segundo o metamodelo ArchiMate 3.2."""
         if rel.type == ArchiMateRelationshipType.ACCESS:
-            # Access should target a passive element (like DataObject)
+            # Relações de acesso (Access) devem apontar para elementos passivos (ex: DataObject)
             if tgt.type not in PASSIVE_ELEMENT_TYPES:
                 warnings.append(ValidationIssue(
                     severity="warning",
@@ -222,7 +222,7 @@ class ArchiMateValidator:
                 ))
 
         elif rel.type == ArchiMateRelationshipType.SERVING:
-            # Serving: source provides functionality to target
+            # Relações de serviço (Serving): elemento de origem provê funcionalidade para o destino
             info.append(ValidationIssue(
                 severity="info",
                 code="SERVING_RELATION",
@@ -231,7 +231,7 @@ class ArchiMateValidator:
             ))
 
         elif rel.type == ArchiMateRelationshipType.REALIZATION:
-            # Realization: e.g. Component realizes Service or Artifact realizes Component
+            # Relações de realização (Realization): Component realiza Service ou Artifact realiza Component
             info.append(ValidationIssue(
                 severity="info",
                 code="REALIZATION_RELATION",
@@ -247,11 +247,11 @@ class ArchiMateValidator:
         errors: List[ValidationIssue],
         warnings: List[ValidationIssue]
     ) -> None:
-        """Verifies 1:1 consistency between Proposal and ArchiMate Model (Single Source of Truth)."""
+        """Verifica a consistência 1:1 entre a Proposta e o Modelo ArchiMate (Fonte Única da Verdade)."""
         model_elem_ids = {e.id for e in model.elements}
         proposal_comp_ids = {c.id for c in proposal.components}
 
-        # Check for missing components in model
+        # Verifica se há componentes da proposta ausentes no modelo
         for comp in proposal.components:
             if comp.id not in model_elem_ids:
                 errors.append(ValidationIssue(
@@ -261,7 +261,7 @@ class ArchiMateValidator:
                     elementId=comp.id,
                 ))
 
-        # Check for missing integrations in model
+        # Verifica se há integrações da proposta ausentes no modelo
         model_rel_ids = {r.id for r in model.relationships}
         for inte in proposal.integrations:
             if inte.id not in model_rel_ids:

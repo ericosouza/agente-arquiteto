@@ -1,4 +1,4 @@
-"""Tests for ArchiMate automated validator (Etapa 8)."""
+"""Testes para o validador automatizado do ArchiMate (Etapa 8)."""
 
 import pytest
 from app.models.archimate import (
@@ -70,10 +70,10 @@ def test_validator_passes_valid_model(valid_archimate_model):
 
 
 def test_validator_detects_duplicate_element_id(valid_archimate_model):
-    # Add an element with duplicate ID
+    # Adiciona um elemento com ID duplicado
     valid_archimate_model.elements.append(
         ArchiMateElement(
-            id="ELEM-1",  # duplicate ID
+            id="ELEM-1",  # ID duplicado
             name="Outro Frontend",
             type=ArchiMateElementType.APPLICATION_COMPONENT,
             layer=ArchiMateLayer.APPLICATION,
@@ -90,7 +90,7 @@ def test_validator_detects_dangling_relationship_source(valid_archimate_model):
         ArchiMateRelationship(
             id="REL-DANGLING",
             type=ArchiMateRelationshipType.SERVING,
-            source="ELEM-GHOST",  # Non-existent ID
+            source="ELEM-GHOST",  # ID de origem inexistente
             target="ELEM-1",
         )
     )
@@ -106,7 +106,7 @@ def test_validator_detects_dangling_relationship_target(valid_archimate_model):
             id="REL-DANGLING-TGT",
             type=ArchiMateRelationshipType.SERVING,
             source="ELEM-1",
-            target="ELEM-GHOST-TGT",  # Non-existent target
+            target="ELEM-GHOST-TGT",  # ID de destino inexistente
         )
     )
 

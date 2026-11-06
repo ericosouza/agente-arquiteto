@@ -1,8 +1,8 @@
-"""ArchiMate Model Exporters (Etapa 7).
+"""Exportadores de Modelos ArchiMate (Etapa 7).
 
-Provides structured export in:
-1. Standard ArchiMate 3.2 JSON format.
-2. The Open Group ArchiMate Model Exchange File Format (XML / .archimate).
+Disponibiliza exportação estruturada em:
+1. Formato padrão JSON do ArchiMate 3.2.
+2. Formato oficial The Open Group ArchiMate Model Exchange File Format (XML / .archimate).
 """
 
 import json
@@ -12,11 +12,11 @@ from app.models.archimate import ArchiMateModel
 
 
 class ArchiMateExporter:
-    """Exports ArchiMate models into structured JSON and standard Open Group XML."""
+    """Exporta modelos ArchiMate em JSON estruturado e formato oficial Open Group XML."""
 
     @classmethod
     def to_json_dict(cls, model: ArchiMateModel) -> Dict[str, Any]:
-        """Converts model to structured ArchiMate 3.2 JSON format."""
+        """Converte o modelo para o formato JSON estruturado ArchiMate 3.2."""
         return {
             "$schema": "https://www.opengroup.org/archimate/3.2/model.json",
             "identifier": model.identifier,
@@ -83,20 +83,20 @@ class ArchiMateExporter:
 
     @classmethod
     def to_json_string(cls, model: ArchiMateModel) -> str:
-        """Serializes the ArchiMate model to formatted JSON."""
+        """Serializa o modelo ArchiMate para JSON formatado."""
         data = cls.to_json_dict(model)
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     @classmethod
     def to_opengroup_xml(cls, model: ArchiMateModel) -> str:
-        """Exports the model to The Open Group ArchiMate Model Exchange Format (3.0/3.2 XML).
+        """Exporta o modelo para o formato Open Group ArchiMate Model Exchange (XML 3.0/3.2).
 
-        This format is fully compatible with Archi and other enterprise architecture tools.
+        Este formato é 100% compatível com o software Archi e ferramentas corporativas de arquitetura.
         """
         ns_uri = "http://www.opengroup.org/xsd/archimate/3.0/"
         xsi_uri = "http://www.w3.org/2001/XMLSchema-instance"
 
-        # Root element: <model>
+        # Elemento raiz: <model>
         root = ET.Element(
             "model",
             {
@@ -107,7 +107,7 @@ class ArchiMateExporter:
             },
         )
 
-        # Name & Documentation
+        # Nome e Documentação
         name_elem = ET.SubElement(root, "name")
         name_elem.text = model.name
         name_elem.set("xml:lang", "pt")
@@ -116,7 +116,7 @@ class ArchiMateExporter:
         doc_elem.text = model.documentation
         doc_elem.set("xml:lang", "pt")
 
-        # Elements container
+        # Contêiner de Elementos
         elements_container = ET.SubElement(root, "elements")
         for elem in model.elements:
             el = ET.SubElement(
@@ -145,7 +145,7 @@ class ArchiMateExporter:
                     prop_val = ET.SubElement(prop, "value")
                     prop_val.text = str(v)
 
-        # Relationships container
+        # Contêiner de Relacionamentos
         relationships_container = ET.SubElement(root, "relationships")
         for rel in model.relationships:
             r = ET.SubElement(
@@ -167,7 +167,7 @@ class ArchiMateExporter:
                 r_doc.text = rel.documentation
                 r_doc.set("xml:lang", "pt")
 
-        # Views container
+        # Contêiner de Visões e Diagramas
         if model.views:
             views_container = ET.SubElement(root, "views")
             diagrams_container = ET.SubElement(views_container, "diagrams")
@@ -182,6 +182,13 @@ class ArchiMateExporter:
                 )
                 v_name = ET.SubElement(v, "name")
                 v_name.text = view.name
+                v_name.set("xml:lang", "pt")
+
+                if view.documentation:
+                    v_doc = ET.SubElement(v, "documentation")
+                    v_doc.text = view.documentation
+                    v_doc.set("xml:lang", "pt")
+
                 for node in view.nodes:
                     ET.SubElement(
                         v,
@@ -192,9 +199,24 @@ class ArchiMateExporter:
                             "y": str(int(node.y)),
                             "w": str(int(node.width)),
                             "h": str(int(node.height)),
+                            "xsi:type": "Element",
                         },
                     )
 
-        ET.indent(root, space="  ")
+                for conn in view.connections:
+                    ET.SubElement(
+                        v,
+                        "connection",
+                        {
+                            "relationshipRef": conn.relationshipId,
+                            "sourceRef": conn.sourceId,
+                            "targetRef": conn.targetId,
+                            "xsi:type": "Relationship",
+                        },
+                    )
+
+        # Geração da string XML com formatação limpa
+        ET.indent(root, space="  ", level=0)
         xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>\n'
-        return xml_declaration + ET.tostring(root, encoding="unicode")
+        xml_body = ET.tostring(root, encoding="utf-8").decode("utf-8")
+        return xml_declaration + xml_body

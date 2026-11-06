@@ -1,0 +1,51 @@
+services:
+  # ==========================================================
+  # 1. Observabilidade de IA & LangGraph (Arize Phoenix Container)
+  # ==========================================================
+  observability:
+    image: arizephoenix/phoenix:latest
+    container_name: agente-arquiteto-observability
+    ports:
+      - "6006:6006" # Dashboard Web e Coletor OpenTelemetry
+    environment:
+      - PHOENIX_PORT=6006
+      - PHOENIX_HOST=0.0.0.0
+    restart: unless-stopped
+
+  # ==========================================================
+  # 2. Backend Agente Arquiteto (FastAPI + Python 3.12)
+  # ==========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agente-arquiteto-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - PHOENIX_COLLECTOR_ENDPOINT=http://observability:6006/v1/traces
+      - USD_TO_BRL_RATE=5.80
+    depends_on:
+      - observability
+    restart: unless-stopped
+
+  # ==========================================================
+  # 3. Frontend Agente Arquiteto (React 19 + Vite + Nginx)
+  # ==========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agente-arquiteto-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
